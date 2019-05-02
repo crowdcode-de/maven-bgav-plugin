@@ -1,6 +1,8 @@
 ncx-maven-bgav-plugin
 
-usage in POM:
+usage in POM, look at raw code not webview:
+
+
 
   <build>
     <plugins>
