@@ -17,6 +17,12 @@
       <artifactId>maven-plugin-api</artifactId>
       <version>3.1.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.apache.maven</groupId>
+      <artifactId>maven-core</artifactId>
+      <version>3.0.5</version>
+      <type>jar</type>
+    </dependency>
   </dependencies>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
