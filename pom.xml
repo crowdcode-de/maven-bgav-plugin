@@ -1,51 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>io.crowdcode</groupId>
-  <artifactId>bgav-maven-plugin</artifactId>
-  <version>1.0-SNAPSHOT</version>
-  <packaging>maven-plugin</packaging>
-  <developers>
-    <developer>
-      <id>aernst</id>
-      <name>Andreas Ernst</name>
-      <email>andreas.ernst@crowdcode.io</email>
-      <organization>Crowdcode GmbH + Co. KG</organization>
-      <organizationUrl>https://www.crowdcode.io</organizationUrl>
-    </developer>
-  </developers>
-  <scm>
-    <connection>scm:git:https://dev.crowdcode.io/bitbucket/projects/NCX/repos/ncx-maven-bgav-plugin</connection>
-    <developerConnection>scm:svn:https://dev.crowdcode.io/bitbucket/projects/NCX/repos/ncx-maven-bgav-plugin</developerConnection>
-  </scm>
-  <dependencies>
-    <dependency>
-      <groupId>org.apache.maven.plugin-tools</groupId>
-      <artifactId>maven-plugin-annotations</artifactId>
-      <version>3.5.2</version>
-      <scope>provided</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-plugin-api</artifactId>
-      <version>3.1.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.maven</groupId>
-      <artifactId>maven-core</artifactId>
-      <version>3.0.5</version>
-      <type>jar</type>
-    </dependency>
-      <dependency>
-          <groupId>junit</groupId>
-          <artifactId>junit</artifactId>
-          <version>4.12</version>
-          <scope>test</scope>
-      </dependency>
-  </dependencies>
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
-  </properties>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>io.crowdcode</groupId>
+    <artifactId>bgav-maven-plugin</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>maven-plugin</packaging>
+
+    <developers>
+        <developer>
+            <id>aernst</id>
+            <name>Andreas Ernst</name>
+            <email>andreas.ernst@crowdcode.io</email>
+            <organization>Crowdcode GmbH + Co. KG</organization>
+            <organizationUrl>https://www.crowdcode.io</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:https://dev.crowdcode.io/bitbucket/projects/NCX/repos/ncx-maven-bgav-plugin</connection>
+        <developerConnection>scm:svn:https://dev.crowdcode.io/bitbucket/projects/NCX/repos/ncx-maven-bgav-plugin
+        </developerConnection>
+    </scm>
+
+    <distributionManagement>
+        <repository>
+            <id>repo.crowdcode.io</id>
+            <name>repo.crowdcode.io</name>
+            <url>https://repo.crowdcode.io/repository/releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>repo.crowdcode.io</id>
+            <name>repo.crowdcode.io</name>
+            <url>https://repo.crowdcode.io/repository/snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.maven.plugin-tools</groupId>
+            <artifactId>maven-plugin-annotations</artifactId>
+            <version>3.5.2</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-plugin-api</artifactId>
+            <version>3.1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.maven</groupId>
+            <artifactId>maven-core</artifactId>
+            <version>3.0.5</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+    </properties>
 </project>
