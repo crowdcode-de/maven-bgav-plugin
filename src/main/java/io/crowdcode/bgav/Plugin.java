@@ -30,6 +30,8 @@ public class Plugin extends AbstractMojo {
   @Parameter(defaultValue = "${project}", readonly = false)
   private MavenProject mavenProject;
   private Scm scm;
+  @Parameter
+  private String[] namespace;
 
   final Log log = getLog();
 
@@ -59,8 +61,8 @@ public class Plugin extends AbstractMojo {
     log.info("model    " + model);
     log.info("model    " + model.getVersion());
     model.setVersion(model.getVersion() + "-NCX-1-SNAPSHOT");
-    try {
-      new MavenXpp3Writer().write(new FileOutputStream(pomfile), model);
+    try (final FileOutputStream fileOutputStream = new FileOutputStream(pomfile)) {
+      new MavenXpp3Writer().write(fileOutputStream, model);
     } catch (IOException ex) {
       log.error("IOException: " + ex);
       throw new MojoExecutionException("could not write POM: " + ex);
@@ -68,7 +70,7 @@ public class Plugin extends AbstractMojo {
   }
 
   /**
-   * TODO document me
+   * get Maven Project Model from POM
    *
    * @param pomfile
    * @return
