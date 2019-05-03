@@ -33,6 +33,8 @@ public class Plugin extends AbstractMojo {
 
   final Log log = getLog();
 
+  private final String regexp = "(feature)/([A-Z0-9\\-])*-.*";
+
   /**
    * TODO: document me
    *
