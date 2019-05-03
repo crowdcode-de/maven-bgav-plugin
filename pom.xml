@@ -15,6 +15,12 @@
             <organization>Crowdcode GmbH + Co. KG</organization>
             <organizationUrl>https://www.crowdcode.io</organizationUrl>
         </developer>
+        <developer>
+            <email>marcus.noerder-tuitje@crowdcode.io</email>
+            <name>Marcus Noerder-Tuitje</name>
+            <organization>CROWDCODE GmbH + Co. KG.</organization>
+            <organizationUrl>https://crowdcode.io</organizationUrl>
+        </developer>
     </developers>
 
     <scm>
