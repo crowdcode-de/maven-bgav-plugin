@@ -117,7 +117,7 @@ public class Plugin extends AbstractMojo {
                         throw new MojoExecutionException("could not write POM: " + ex);
                     }
                     try {
-                        CredentialsProvider cp = new UsernamePasswordCredentialsProvider( "admin", "7m,jrwBqRlF-");
+                        CredentialsProvider cp = new UsernamePasswordCredentialsProvider( "crowdcode", "lSir05xA3k-6");
                         git.commit().setMessage(ticketID + " - BGAV - set correkt branched version").call();
                         git.add().addFilepattern("pom.xml").call();
 //                        AddCommand add = git.add();
