@@ -9,7 +9,6 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
@@ -19,7 +18,6 @@ import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -35,6 +33,12 @@ import java.util.regex.Pattern;
 @Mojo(name = "bgav")
 public class Plugin extends AbstractMojo {
 
+    @Parameter
+    private String gituser;
+
+    @Parameter
+    private String gitpassword;
+    
     @Parameter
     private String[] namespace;
 
@@ -202,9 +206,16 @@ public class Plugin extends AbstractMojo {
         }
     }
 
+    /**
+     * Git POM commit and push
+     * 
+     * @param git
+     * @param ticketID
+     * @throws MojoExecutionException 
+     */
     void commitAndPush(Git git, String ticketID) throws MojoExecutionException {
         try {
-            CredentialsProvider cp = new UsernamePasswordCredentialsProvider("crowdcode", "lSir05xA3k-6");
+            CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
             git.add().addFilepattern("pom.xml").call();
             git.commit().setMessage(ticketID + " - BGAV - set correkt branched version").call();
             git.push().setCredentialsProvider(cp).call();
