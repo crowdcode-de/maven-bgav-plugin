@@ -1,7 +1,6 @@
 package io.crowdcode.bgav;
 
 import org.apache.maven.model.Model;
-import org.apache.maven.model.Scm;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.plugin.AbstractMojo;
@@ -12,18 +11,15 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.ListBranchCommand;
-import org.eclipse.jgit.api.StatusCommand;
+import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.errors.NoWorkTreeException;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
@@ -38,11 +34,8 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 @Mojo(name = "bgav")
 public class Plugin extends AbstractMojo {
 
-//  @Parameter(defaultValue = "${project}", required = true)
-//  @Parameter(defaultValue = "${mavenProject}", required = true, readonly = true)
-    @Parameter(defaultValue = "${project}", readonly = false)
+    @Parameter(defaultValue = "${project}")
     private MavenProject mavenProject;
-    private Scm scm;
     @Parameter
     private String[] namespace;
 
@@ -60,82 +53,65 @@ public class Plugin extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
 
-        log.info("Hello, world.");
-        log.info(mavenProject.toString());
-        log.info("getArtifactId " + mavenProject.getArtifactId());
-        log.info("getVersion    " + mavenProject.getVersion());
-        // Ticket-ID schon vorhanden
-        mavenProject.setVersion(mavenProject.getVersion() + "-NCX-1-SNAPSHOT");
-        log.info("getVersion    " + mavenProject.getVersion());
-
         File pomfile = new File("pom.xml");
-
         Model model = getModel(pomfile);
+        log.info("Project " + model);
 
-        log.info("model    " + model);
-        log.info("model    " + model.getVersion());
-        log.info("model    " + model.getProjectDirectory());
-        // Frage hier oder als Klasse var?, wegen schnick schnack halt...
-        Git git;
-        String branch, ticketID, pomBranchVersion;
-        try {
-            git = Git.open(model.getProjectDirectory());
-            log.info("git    " + git);
-        } catch (RepositoryNotFoundException ex) {
-            // kein Git Repo vorhanden -> done.
+        // check for Git Repo
+        Git git = getGitRepo(model);
+        if (git == null) {
             return;
-        } catch (IOException ex) {
-            throw new MojoExecutionException("could not read Git Repo: " + ex);
         }
-        StatusCommand statusCommand = git.status();
+
         try {
-            log.info("git.status():      " + statusCommand.call());
-        } catch (GitAPIException | NoWorkTreeException ex) {
-            Logger.getLogger(Plugin.class.getName()).log(Level.SEVERE, null, ex);
-            throw new MojoExecutionException("git status failed: " + ex);
-        }
-        ListBranchCommand listBranchCommand = git.branchList().setListMode(ListBranchCommand.ListMode.REMOTE);
-        log.info("listBranchCommand: " + listBranchCommand);
-        Repository repo = git.getRepository();
-        try {
-            branch = repo.getBranch();
-            pomBranchVersion = getMatchFirst(model.getVersion(), REGEX_TICKET);
-            log.info("git branch: " + branch);
-            log.info("git branch version: " + pomBranchVersion);
-            if (branch.startsWith("feature")) {
-                ticketID = getMatchFirst(branch, REGEX_TICKET);
-                log.info("ticketID: " + ticketID);
-                if (pomBranchVersion != null && !ticketID.equals(pomBranchVersion)) {
-                    throw new MojoExecutionException("mismatch Git Branch Ticket ID and POM Ticket ID");
-                } else if (pomBranchVersion == null) {
-                    // write new verion to POM
-                    model.setVersion(model.getVersion() + "-" + ticketID + "-SNAPSHOT");
-                    try (final FileOutputStream fileOutputStream = new FileOutputStream(pomfile)) {
-                        new MavenXpp3Writer().write(fileOutputStream, model);
-                    } catch (IOException ex) {
-                        log.error("IOException: " + ex);
-                        throw new MojoExecutionException("could not write POM: " + ex);
-                    }
-                    try {
-                        CredentialsProvider cp = new UsernamePasswordCredentialsProvider( "crowdcode", "lSir05xA3k-6");
-                        git.add().addFilepattern("pom.xml").call();
-                        git.commit().setMessage(ticketID + " - BGAV - set correkt branched version").call();
-                        git.push().setCredentialsProvider( cp ).call();
-                    } catch (GitAPIException ex) {
-                        throw new MojoExecutionException("Git commit/push failed: " + ex);
-                    }
-                } else if (ticketID.equals(pomBranchVersion)) {
-                    log.info("Git Branch Ticket ID matches POM Ticket ID ... done.");
+            Status status = git.status().call();
+            log.info("Git status: " + status);
+            log.info("hasUncommittedChanges: " + status.hasUncommittedChanges());
+            Set<String> changes = status.getModified();
+            log.info("Git changes: " + changes);
+            for (String change : changes) {
+                log.info("Git changes: " + change);
+                if (change.equals("pom.xml")) {
+                    throw new MojoExecutionException("POM is not commited... please commit before building application.");
                 }
             }
-        } catch (Exception ex) {
-            throw new MojoExecutionException("RegEx failed: " + ex);
+        } catch (GitAPIException | NoWorkTreeException ex) {
+            getLog().error("Git error: " + ex);
+            throw new MojoExecutionException("Git status failed: " + ex);
         }
+        
+        Repository repo = git.getRepository();
+        try {
+            String branch = repo.getBranch();
+            log.info("Git branch: " + branch);
+            // NCX-14 check for feature branch
+            if (branch != null && branch.startsWith("feature")) {
+                String pomVersion = getMatchFirst(model.getVersion(), REGEX_TICKET);
+                String ticketID = getMatchFirst(branch, REGEX_TICKET);
+                log.info("POM Version: " + pomVersion);
+                log.info("ticketID: " + ticketID);
+                if (pomVersion == null) {
+                    // NCX-16 write new verion to POM
+//                    writeChangedPOM(model, git, ticketID, pomfile);
+                } else if (ticketID.equals(pomVersion)) {
+                    // POM Version has TicketID
+                    log.info("Git branch ticket ID matches POM ticket ID ... done.");
+                } else {
+                    // POM Version has TicketID
+                    throw new MojoExecutionException("mismatch Git branch ticket ID and POM branch version ticket ID");
+                }
+            } else {
+                log.info("no Git feature branch ... done.");
+            }
+        } catch (IOException | MojoExecutionException ex) {
+            throw new MojoExecutionException("could not get branch: " + ex);
+        }
+        repo.close();
         git.close();
     }
 
     /**
-     * get Maven Project Model from POM
+     * get Maven project model from POM
      *
      * @param pomfile
      * @return
@@ -156,14 +132,75 @@ public class Plugin extends AbstractMojo {
         return model;
     }
 
+    /**
+     * check for Git Repository
+     *
+     * @param Model
+     * @return Git
+     * @throws MojoExecutionException
+     */
+    Git getGitRepo(Model model) throws MojoExecutionException {
+        Git git = null;
+        try {
+            git = Git.open(model.getProjectDirectory());
+            log.info(git.toString());
+        } catch (RepositoryNotFoundException ex) {
+            // no Git Repo -> done.
+            log.info("there is no Git repo ... done.");
+            return git;
+        } catch (IOException ex) {
+            throw new MojoExecutionException("could not read Git repo: " + ex);
+        }
+        return git;
+    }
+
+    Boolean checkBranch() {
+        return true;
+    }
+
+    /**
+     * write changed POM
+     * 
+     * @param model
+     * @param git
+     * @param ticketID
+     * @param pomfile
+     * @throws MojoExecutionException 
+     */
+    void writeChangedPOM(Model model, Git git, String ticketID, File pomfile) throws MojoExecutionException {
+        // NCX-15
+        model.setVersion(model.getVersion() + "-" + ticketID + "-SNAPSHOT");
+        try (final FileOutputStream fileOutputStream = new FileOutputStream(pomfile)) {
+            new MavenXpp3Writer().write(fileOutputStream, model);
+        } catch (IOException ex) {
+            log.error("IOException: " + ex);
+            throw new MojoExecutionException("could not write POM: " + ex);
+        }
+        try {
+            CredentialsProvider cp = new UsernamePasswordCredentialsProvider("crowdcode", "lSir05xA3k-6");
+            git.add().addFilepattern("pom.xml").call();
+            git.commit().setMessage(ticketID + " - BGAV - set correkt branched version").call();
+            git.push().setCredentialsProvider(cp).call();
+        } catch (GitAPIException ex) {
+            log.error("GitAPIException: " + ex);
+            throw new MojoExecutionException("Git commit/push failed: " + ex);
+        }
+    }
+
+    /**
+     * RegEx auf Branch
+     *
+     * @param search
+     * @param pat
+     * @return
+     */
     String getMatchFirst(String search, String pat) {
         String match = null;
         Pattern pattern = Pattern.compile(pat);
         Matcher matcher = pattern.matcher(search);
         while (matcher.find()) {
             match = matcher.group(1);
-            getLog().info("Matcher: " + match);
-//            getLog().info("Matcher: " + matcher.group(2));
+//            log.info("Matcher: " + match);
         }
         return match;
     }
