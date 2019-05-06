@@ -11,13 +11,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -26,6 +19,14 @@ import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  *
@@ -56,6 +57,17 @@ public class Plugin extends AbstractMojo {
         File pomfile = new File("pom.xml");
         Model model = getModel(pomfile);
         log.info("Project " + model);
+
+        // 1. check for SNAPSHOT -> if not: abort
+        // (POM) {Version}-SNAPSHOT
+        // (POM) {Version}-{TicketID}-SNAPSHOT
+
+        // 2. check for branch: MUST NOT be develop or master or release
+        // (GIT) {feature|bugfix|hotfix}/{branchname}
+        //       {branchname} --> {TicketID}-{Description}
+        //                         NCX-7-foobar-gabba-gabba-hey
+        //                         ^^^^^--Ticket format
+        // (GIT) must not be develop, master, release
 
         // check for Git Repo
         Git git = getGitRepo(model);
@@ -92,7 +104,8 @@ public class Plugin extends AbstractMojo {
                 log.info("ticketID: " + ticketID);
                 if (pomVersion == null) {
                     // NCX-16 write new verion to POM
-//                    writeChangedPOM(model, git, ticketID, pomfile);
+                    writeChangedPOM(model, git, ticketID, pomfile);
+                    commitAndPush(git, ticketID);
                 } else if (ticketID.equals(pomVersion)) {
                     // POM Version has TicketID
                     log.info("Git branch ticket ID matches POM ticket ID ... done.");
@@ -135,7 +148,7 @@ public class Plugin extends AbstractMojo {
     /**
      * check for Git Repository
      *
-     * @param Model
+     * @param model
      * @return Git
      * @throws MojoExecutionException
      */
@@ -176,6 +189,9 @@ public class Plugin extends AbstractMojo {
             log.error("IOException: " + ex);
             throw new MojoExecutionException("could not write POM: " + ex);
         }
+    }
+
+    void commitAndPush(Git git, String ticketID) throws MojoExecutionException {
         try {
             CredentialsProvider cp = new UsernamePasswordCredentialsProvider("crowdcode", "lSir05xA3k-6");
             git.add().addFilepattern("pom.xml").call();
