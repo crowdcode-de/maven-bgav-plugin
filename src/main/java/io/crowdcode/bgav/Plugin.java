@@ -92,23 +92,23 @@ public class Plugin extends AbstractMojo {
                 throw new MojoExecutionException("could not get Git branch");
             } else if (branch.startsWith("feature")) {
                 // NCX-14 check for feature branch
-                String pomVersion, ticketID;
+                String pomTicketID, ticketID;
                 if (regex_ticket == null || regex_ticket.isEmpty()) {
                     log.info("RegEx for ticket ID is empty, use implemented one");
-                    pomVersion = getMatchFirst(model.getVersion(), REGEX_TICKET);
+                    pomTicketID = getMatchFirst(model.getVersion(), REGEX_TICKET);
                     ticketID = getMatchFirst(branch, REGEX_TICKET);
                 } else {
                     log.info("use provided RegEx for ticket ID");
-                    pomVersion = getMatchFirst(model.getVersion(), regex_ticket);
+                    pomTicketID = getMatchFirst(model.getVersion(), regex_ticket);
                     ticketID = getMatchFirst(branch, regex_ticket);
                 }
-                log.info("POM Version: " + pomVersion);
+                log.info("POM Version: " + pomTicketID);
                 log.info("ticketID: " + ticketID);
-                if (pomVersion == null) {
+                if (pomTicketID == null) {
                     // NCX-16 write new verion to POM
                     writeChangedPOM(model, git, ticketID, pomfile);
                     commitAndPush(git, ticketID);
-                } else if (ticketID.equals(pomVersion)) {
+                } else if (ticketID.equals(pomTicketID)) {
                     // POM Version has TicketID
                     log.info("Git branch ticket ID matches POM ticket ID ... done.");
                 } else {
