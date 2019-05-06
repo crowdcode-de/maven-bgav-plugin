@@ -118,10 +118,8 @@ public class Plugin extends AbstractMojo {
                     }
                     try {
                         CredentialsProvider cp = new UsernamePasswordCredentialsProvider( "crowdcode", "lSir05xA3k-6");
-                        git.commit().setMessage(ticketID + " - BGAV - set correkt branched version").call();
                         git.add().addFilepattern("pom.xml").call();
-//                        AddCommand add = git.add();
-//                        add.addFilepattern("pom.xml").call();
+                        git.commit().setMessage(ticketID + " - BGAV - set correkt branched version").call();
                         git.push().setCredentialsProvider( cp ).call();
                     } catch (GitAPIException ex) {
                         throw new MojoExecutionException("Git commit/push failed: " + ex);
