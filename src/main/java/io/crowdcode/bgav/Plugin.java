@@ -68,6 +68,9 @@ public class Plugin extends AbstractMojo {
         log.info("Project " + model);
 
         // 1. check for SNAPSHOT -> if not: abort
+        if (checkForSnapshot(model)) {
+            throw new MojoExecutionException("project is not a SNAPSHOT");
+        }
         // (POM) {Version}-SNAPSHOT
         // (POM) {Version}-{TicketID}-SNAPSHOT
         // 2. check for branch: MUST NOT be develop or master or release
@@ -199,8 +202,14 @@ public class Plugin extends AbstractMojo {
         return git;
     }
 
-    Boolean checkBranch() {
-        return true;
+    /**
+     * check Git for SNAPSHOT
+     * 
+     * @param model
+     * @return 
+     */
+    Boolean checkForSnapshot(Model model) {
+        return model.getVersion().contains("SNAPSHOT");
     }
 
     /**
