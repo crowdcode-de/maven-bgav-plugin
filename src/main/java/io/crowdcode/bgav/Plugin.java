@@ -35,8 +35,6 @@ import java.util.regex.Pattern;
 @Mojo(name = "bgav")
 public class Plugin extends AbstractMojo {
 
-    @Parameter(defaultValue = "${project}")
-    private MavenProject mavenProject;
     @Parameter
     private String[] namespace;
 
@@ -67,7 +65,8 @@ public class Plugin extends AbstractMojo {
         //                         NCX-7-foobar-gabba-gabba-hey
         //                         ^^^^^--Ticket format
         // (GIT) must not be develop, master, release
-        // check for Git Repo
+
+        // check for Git Repo -> @todo: autocloseable
         Git git = getGitRepo(model);
         if (git == null) {
             return;
@@ -122,7 +121,7 @@ public class Plugin extends AbstractMojo {
             model = mavenreader.read(reader);
             model.setPomFile(pomfile);
         } catch (IOException | XmlPullParserException ex) {
-            getLog().error("ParseError: " + ex);
+            getLog().error("Error: " + ex);
             throw new MojoExecutionException("could not read POM: " + ex);
         }
         return model;
