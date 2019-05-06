@@ -41,6 +41,9 @@ public class Plugin extends AbstractMojo {
 
     @Parameter
     private String regex_ticket;
+    
+    @Parameter
+    private String regex_branch;
 
     @Parameter
     private String[] namespace;
@@ -48,6 +51,7 @@ public class Plugin extends AbstractMojo {
     final Log log = getLog();
 
     private final String regexp = "(feature)/([A-Z0-9\\-])*-.*";
+    private final String REGEX_BRANCH = "{feature|bugfix|hotfix}";
     private final String REGEX_TICKET = "(\\p{Upper}{1,}-\\d{1,})";
 
     /**
@@ -84,8 +88,10 @@ public class Plugin extends AbstractMojo {
         try {
             String branch = repo.getBranch();
             log.info("Git branch: " + branch);
-            // NCX-14 check for feature branch
-            if (branch != null && branch.startsWith("feature")) {
+            if (branch == null) {
+                throw new MojoExecutionException("could not get Git branch");
+            } else if (branch.startsWith("feature")) {
+                // NCX-14 check for feature branch
                 String pomVersion, ticketID;
                 if (regex_ticket == null || regex_ticket.isEmpty()) {
                     log.info("RegEx for ticket ID is empty, use implemented one");
@@ -109,6 +115,8 @@ public class Plugin extends AbstractMojo {
                     // POM Version has TicketID
                     throw new MojoExecutionException("mismatch Git branch ticket ID and POM branch version ticket ID");
                 }
+            } else if (getMatchFirst(branch, (regex_branch == null || regex_branch.isEmpty() ? REGEX_BRANCH : regex_branch)).isEmpty()) {
+                throw new MojoExecutionException("not allowed branch: " + branch);
             } else {
                 log.info("no Git feature branch ... done.");
             }
