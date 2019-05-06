@@ -41,7 +41,7 @@ public class Plugin extends AbstractMojo {
 
     @Parameter
     private String regex_ticket;
-    
+
     @Parameter
     private String regex_branch;
 
@@ -68,7 +68,7 @@ public class Plugin extends AbstractMojo {
         log.info("Project " + model);
 
         // 1. check for SNAPSHOT -> if not: abort
-        if (checkForSnapshot(model)) {
+        if (!checkForSnapshot(model)) {
             throw new MojoExecutionException("project is not a SNAPSHOT");
         }
         // (POM) {Version}-SNAPSHOT
@@ -79,6 +79,7 @@ public class Plugin extends AbstractMojo {
         //                         NCX-7-foobar-gabba-gabba-hey
         //                         ^^^^^--Ticket format
         // (GIT) must not be develop, master, release
+
         // check for Git Repo -> @todo: autocloseable
         Git git = getGitRepo(model);
         if (git == null) {
@@ -118,7 +119,7 @@ public class Plugin extends AbstractMojo {
                     // POM Version has TicketID
                     throw new MojoExecutionException("mismatch Git branch ticket ID and POM branch version ticket ID");
                 }
-            } else if (getMatchFirst(branch, (regex_branch == null || regex_branch.isEmpty() ? REGEX_BRANCH : regex_branch)).isEmpty()) {
+            } else if (checkForBranch(branch)) {
                 throw new MojoExecutionException("not allowed branch: " + branch);
             } else {
                 log.info("no Git feature branch ... done.");
@@ -204,12 +205,28 @@ public class Plugin extends AbstractMojo {
 
     /**
      * check Git for SNAPSHOT
-     * 
+     *
      * @param model
-     * @return 
+     * @return true/false
      */
     Boolean checkForSnapshot(Model model) {
         return model.getVersion().contains("SNAPSHOT");
+    }
+
+    /**
+     * check Git for allowed branch
+     *
+     * @param branch
+     * @return true/false
+     */
+    Boolean checkForBranch(String branch) {
+        if (regex_branch == null || regex_branch.isEmpty()) {
+            log.info("RegEx for branch is empty, use implemented one");
+            return !getMatchFirst(branch, REGEX_BRANCH).isEmpty();
+        } else {
+            log.info("use provided RegEx for branch");
+            return !getMatchFirst(branch, regex_branch).isEmpty();
+        }
     }
 
     /**
@@ -264,7 +281,7 @@ public class Plugin extends AbstractMojo {
         Matcher matcher = pattern.matcher(search);
         while (matcher.find()) {
             match = matcher.group(1);
-//            log.info("Matcher: " + match);
+            log.info("Matcher: " + match);
         }
         return match;
     }

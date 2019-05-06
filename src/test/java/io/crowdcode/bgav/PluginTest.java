@@ -40,4 +40,21 @@ public class PluginTest {
         Git git = plugin.getGitRepo(model);
         Assert.assertNotNull(git);
     }
+
+    @Test
+    public void testCheckForSnapshot() {
+        Plugin plugin = new Plugin();
+        Model model = new Model();
+        model.setVersion("1.0.1-SNAPSHOT");
+        assertTrue(plugin.checkForSnapshot(model));
+        model.setVersion("1.0.1");
+        assertTrue(!plugin.checkForSnapshot(model));
+    }
+
+    @Test
+    public void testCheckForBranch() {
+        assertTrue("feature", false);
+//        assertTrue("bugfix", false);
+//        assertTrue("hotfix", false);
+    }
 }
