@@ -61,37 +61,20 @@ public class Plugin extends AbstractMojo {
         // 1. check for SNAPSHOT -> if not: abort
         // (POM) {Version}-SNAPSHOT
         // (POM) {Version}-{TicketID}-SNAPSHOT
-
         // 2. check for branch: MUST NOT be develop or master or release
         // (GIT) {feature|bugfix|hotfix}/{branchname}
         //       {branchname} --> {TicketID}-{Description}
         //                         NCX-7-foobar-gabba-gabba-hey
         //                         ^^^^^--Ticket format
         // (GIT) must not be develop, master, release
-
         // check for Git Repo
         Git git = getGitRepo(model);
         if (git == null) {
             return;
         }
 
-        try {
-            Status status = git.status().call();
-            log.info("Git status: " + status);
-            log.info("hasUncommittedChanges: " + status.hasUncommittedChanges());
-            Set<String> changes = status.getModified();
-            log.info("Git changes: " + changes);
-            for (String change : changes) {
-                log.info("Git changes: " + change);
-                if (change.equals("pom.xml")) {
-                    throw new MojoExecutionException("POM is not commited... please commit before building application.");
-                }
-            }
-        } catch (GitAPIException | NoWorkTreeException ex) {
-            getLog().error("Git error: " + ex);
-            throw new MojoExecutionException("Git status failed: " + ex);
-        }
-        
+        checkStatus(git);
+
         Repository repo = git.getRepository();
         try {
             String branch = repo.getBranch();
@@ -146,6 +129,35 @@ public class Plugin extends AbstractMojo {
     }
 
     /**
+     * check for Git status
+     * abort if POM has changed
+     *
+     * @param git
+     * @throws MojoExecutionException
+     */
+    void checkStatus(Git git) throws MojoExecutionException {
+        try {
+            Status status = git.status().call();
+            log.info("Git status: " + status);
+            log.info("hasUncommittedChanges: " + status.hasUncommittedChanges());
+            Set<String> changes = status.getModified();
+            log.info("Git changes: " + changes);
+            /*for (String change : changes) {
+                log.info("Git changes: " + change);
+                if (change.equals("pom.xml")) {
+                    throw new MojoExecutionException("POM is not commited... please commit before building application.");
+                }
+            }*/
+            if (changes.contains("pom.xml")) {
+                throw new MojoExecutionException("POM is not commited... please commit before building application.");
+            }
+        } catch (GitAPIException | NoWorkTreeException ex) {
+            getLog().error("Git error: " + ex);
+            throw new MojoExecutionException("Git status failed: " + ex);
+        }
+    }
+
+    /**
      * check for Git Repository
      *
      * @param model
@@ -173,12 +185,12 @@ public class Plugin extends AbstractMojo {
 
     /**
      * write changed POM
-     * 
+     *
      * @param model
      * @param git
      * @param ticketID
      * @param pomfile
-     * @throws MojoExecutionException 
+     * @throws MojoExecutionException
      */
     void writeChangedPOM(Model model, Git git, String ticketID, File pomfile) throws MojoExecutionException {
         // NCX-15
