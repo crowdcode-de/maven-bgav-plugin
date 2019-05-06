@@ -53,8 +53,9 @@ public class PluginTest {
 
     @Test
     public void testCheckForBranch() {
-        assertTrue("feature", false);
-//        assertTrue("bugfix", false);
-//        assertTrue("hotfix", false);
+        Plugin plugin = new Plugin();
+        assertTrue(plugin.checkForBranch("feature"));
+        assertTrue(plugin.checkForBranch("bugfix"));
+        assertTrue(plugin.checkForBranch("hotfix"));
     }
 }

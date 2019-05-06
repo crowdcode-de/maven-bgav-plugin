@@ -51,7 +51,7 @@ public class Plugin extends AbstractMojo {
     final Log log = getLog();
 
     private final String regexp = "(feature)/([A-Z0-9\\-])*-.*";
-    private final String REGEX_BRANCH = "{feature|bugfix|hotfix}";
+    private final String REGEX_BRANCH = "(feature|bugfix|hotfix)";
     private final String REGEX_TICKET = "(\\p{Upper}{1,}-\\d{1,})";
 
     /**
@@ -281,7 +281,7 @@ public class Plugin extends AbstractMojo {
         Matcher matcher = pattern.matcher(search);
         while (matcher.find()) {
             match = matcher.group(1);
-            log.info("Matcher: " + match);
+//            log.info("Matcher: " + match);
         }
         return match;
     }
