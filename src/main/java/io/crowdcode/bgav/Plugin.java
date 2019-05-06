@@ -38,7 +38,10 @@ public class Plugin extends AbstractMojo {
 
     @Parameter
     private String gitpassword;
-    
+
+    @Parameter
+    private String regex_ticket;
+
     @Parameter
     private String[] namespace;
 
@@ -69,7 +72,6 @@ public class Plugin extends AbstractMojo {
         //                         NCX-7-foobar-gabba-gabba-hey
         //                         ^^^^^--Ticket format
         // (GIT) must not be develop, master, release
-
         // check for Git Repo -> @todo: autocloseable
         Git git = getGitRepo(model);
         if (git == null) {
@@ -84,8 +86,16 @@ public class Plugin extends AbstractMojo {
             log.info("Git branch: " + branch);
             // NCX-14 check for feature branch
             if (branch != null && branch.startsWith("feature")) {
-                String pomVersion = getMatchFirst(model.getVersion(), REGEX_TICKET);
-                String ticketID = getMatchFirst(branch, REGEX_TICKET);
+                String pomVersion, ticketID;
+                if (regex_ticket == null || regex_ticket.isEmpty()) {
+                    log.info("RegEx for ticket ID is empty, use implemented one");
+                    pomVersion = getMatchFirst(model.getVersion(), REGEX_TICKET);
+                    ticketID = getMatchFirst(branch, REGEX_TICKET);
+                } else {
+                    log.info("use provided RegEx for ticket ID");
+                    pomVersion = getMatchFirst(model.getVersion(), regex_ticket);
+                    ticketID = getMatchFirst(branch, regex_ticket);
+                }
                 log.info("POM Version: " + pomVersion);
                 log.info("ticketID: " + ticketID);
                 if (pomVersion == null) {
@@ -132,8 +142,7 @@ public class Plugin extends AbstractMojo {
     }
 
     /**
-     * check for Git status
-     * abort if POM has changed
+     * check for Git status abort if POM has changed
      *
      * @param git
      * @throws MojoExecutionException
@@ -208,10 +217,10 @@ public class Plugin extends AbstractMojo {
 
     /**
      * Git POM commit and push
-     * 
+     *
      * @param git
      * @param ticketID
-     * @throws MojoExecutionException 
+     * @throws MojoExecutionException
      */
     void commitAndPush(Git git, String ticketID) throws MojoExecutionException {
         try {
