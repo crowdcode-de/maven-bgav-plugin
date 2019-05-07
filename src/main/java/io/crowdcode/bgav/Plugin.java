@@ -46,6 +46,9 @@ public class Plugin extends AbstractMojo {
     private String regex_branch;
 
     @Parameter
+    private boolean failOnMissingBranchId = true;
+
+    @Parameter
     private String[] namespace;
 
     final Log log = getLog();
@@ -112,6 +115,10 @@ public class Plugin extends AbstractMojo {
                     // NCX-16 write new verion to POM
                     writeChangedPOM(model, git, ticketID, pomfile);
                     commitAndPush(git, ticketID);
+                    if (failOnMissingBranchId) {
+                        // NCX-26
+                        throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
+                    }
                 } else if (ticketID.equals(pomTicketID)) {
                     // POM Version has TicketID
                     log.info("Git branch ticket ID matches POM ticket ID ... done.");
