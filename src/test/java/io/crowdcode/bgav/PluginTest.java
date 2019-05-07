@@ -7,6 +7,7 @@ import java.io.File;
 import java.util.UUID;
 import org.eclipse.jgit.api.Git;
 import org.junit.Assert;
+import static org.junit.Assert.assertFalse;
 
 import static org.junit.Assert.assertTrue;
 
@@ -57,5 +58,8 @@ public class PluginTest {
         assertTrue(plugin.checkForBranch("feature"));
         assertTrue(plugin.checkForBranch("bugfix"));
         assertTrue(plugin.checkForBranch("hotfix"));
+        assertFalse(plugin.checkForBranch("master"));
+        assertFalse(plugin.checkForBranch("develop"));
+        assertFalse(plugin.checkForBranch("release"));
     }
 }
