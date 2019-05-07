@@ -220,12 +220,15 @@ public class Plugin extends AbstractMojo {
      * @return true/false
      */
     Boolean checkForBranch(String branch) {
+        String check = "";
         if (regex_branch == null || regex_branch.isEmpty()) {
             log.info("RegEx for branch is empty, use implemented one");
-            return !getMatchFirst(branch, REGEX_BRANCH).isEmpty();
+            check = getMatchFirst(branch, REGEX_BRANCH);
+            return check == null ? false : !check.isEmpty();
         } else {
             log.info("use provided RegEx for branch");
-            return !getMatchFirst(branch, regex_branch).isEmpty();
+            check = getMatchFirst(branch, regex_branch);
+            return check == null ? false : !check.isEmpty();
         }
     }
 
