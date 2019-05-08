@@ -359,7 +359,7 @@ public class Plugin extends AbstractMojo {
         Matcher matcher = pattern.matcher(search);
         while (matcher.find()) {
             match = matcher.group(1);
-//            log.info("Matcher: " + match);
+            log.info("Matcher: " + match);
         }
         return match;
     }
