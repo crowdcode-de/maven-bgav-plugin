@@ -38,16 +38,16 @@ import java.util.regex.Pattern;
 @Mojo(name = "bgav")
 public class Plugin extends AbstractMojo {
 
-    @Parameter
+    @Parameter(property = "gituser")
     private String gituser;
 
-    @Parameter
+    @Parameter(property = "gitpassword")
     private String gitpassword;
 
-    @Parameter
+    @Parameter(property = "regex_ticket")
     private String regex_ticket;
 
-    @Parameter
+    @Parameter(property = "regex_branch")
     private String regex_branch;
 
     @Parameter(property = "failOnMissingBranchId")
@@ -56,7 +56,7 @@ public class Plugin extends AbstractMojo {
     @Parameter(property = "branchName")
     private String branchName;
 
-    @Parameter
+    @Parameter(property = "namespace")
     private String[] namespace;
 
     final Log log = getLog();
