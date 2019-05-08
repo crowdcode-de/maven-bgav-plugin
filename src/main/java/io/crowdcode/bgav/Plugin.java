@@ -273,6 +273,7 @@ public class Plugin extends AbstractMojo {
      * @return branch
      */
     String checkBranchName(Repository repo, String commitId) throws MojoExecutionException {
+        log.info("branchName: " + branchName);
         String branch = "";
         try {
             branch = repo.getBranch();
