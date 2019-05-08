@@ -284,13 +284,13 @@ public class Plugin extends AbstractMojo {
                 if (branchName == null || branchName.isEmpty()) {
                     throw new MojoExecutionException("Maven parameter 'branchName' is not set");
                 }
-            } else {
                 branch = branchName;
-            }
-            if (branchName == null || branchName.isEmpty()) {
-                branch = repo.getBranch();
             } else {
-                branch = branchName;
+                if (branchName == null || branchName.isEmpty()) {
+                    branch = repo.getBranch();
+                } else {
+                    branch = branchName;
+                }
             }
             log.info("Git branch: " + branch);
         } catch (IOException | MojoExecutionException ex) {
