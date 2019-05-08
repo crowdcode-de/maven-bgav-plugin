@@ -80,11 +80,10 @@ public class Plugin extends AbstractMojo {
         log.info("failOnMissingBranchId: " + failOnMissingBranchId);
         log.info("branchName: " + branchName);
         if ( (gituser == null || gituser.isEmpty()) || (gitpassword == null || gitpassword.isEmpty())) {
-            log.info("missing Git credentials");
+            log.info("no Git credentials set");
         } else {
-            log.info("Git credentials for " + gituser);
+            log.info("Git credentials set");
         }
-        log.info("Git credentials for " + gituser);
 
         // 1. check for SNAPSHOT -> if not: abort
         if (!checkForSnapshot(model)) {
