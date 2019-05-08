@@ -97,7 +97,7 @@ public class Plugin extends AbstractMojo {
         Repository repo = git.getRepository();
         try {
             String branch;
-            if (branchName == null && branchName.isEmpty()) {
+            if (branchName == null || branchName.isEmpty()) {
                 branch = repo.getBranch();
             } else {
                 branch = branchName;
