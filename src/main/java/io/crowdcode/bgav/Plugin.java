@@ -50,7 +50,7 @@ public class Plugin extends AbstractMojo {
     @Parameter
     private String regex_branch;
 
-    @Parameter
+    @Parameter(property = "failOnMissingBranchId")
     private boolean failOnMissingBranchId = true;
 
     @Parameter(property = "branchName")
