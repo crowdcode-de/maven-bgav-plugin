@@ -47,6 +47,9 @@ public class Plugin extends AbstractMojo {
 
     @Parameter
     private boolean failOnMissingBranchId = true;
+    
+    @Parameter
+    private String branchName;
 
     @Parameter
     private String[] namespace;
@@ -93,7 +96,12 @@ public class Plugin extends AbstractMojo {
 
         Repository repo = git.getRepository();
         try {
-            String branch = repo.getBranch();
+            String branch;
+            if (branchName == null && branchName.isEmpty()) {
+                branch = repo.getBranch();
+            } else {
+                branch = branchName;
+            }
             log.info("Git branch: " + branch);
             if (branch == null) {
                 throw new MojoExecutionException("could not get Git branch");
@@ -101,7 +109,7 @@ public class Plugin extends AbstractMojo {
                 // NCX-14 check for feature branch
                 String pomTicketID, ticketID;
                 if (regex_ticket == null || regex_ticket.isEmpty()) {
-                    log.info("RegEx for ticket ID is empty, use implemented one");
+                    log.info("RegEx for ticket ID is empty, use default one");
                     pomTicketID = getMatchFirst(model.getVersion(), REGEX_TICKET);
                     ticketID = getMatchFirst(branch, REGEX_TICKET);
                 } else {
@@ -169,7 +177,7 @@ public class Plugin extends AbstractMojo {
     void checkStatus(Git git) throws MojoExecutionException {
         try {
             Status status = git.status().call();
-            log.info("Git status: " + status);
+//            log.info("Git status: " + status);
             log.info("hasUncommittedChanges: " + status.hasUncommittedChanges());
             Set<String> changes = status.getModified();
             log.info("Git changes: " + changes);
@@ -229,7 +237,7 @@ public class Plugin extends AbstractMojo {
     Boolean checkForBranch(String branch) {
         String check = "";
         if (regex_branch == null || regex_branch.isEmpty()) {
-            log.info("RegEx for branch is empty, use implemented one");
+            log.info("RegEx for branch is empty, use default one");
             check = getMatchFirst(branch, REGEX_BRANCH);
             return check == null ? false : !check.isEmpty();
         } else {
