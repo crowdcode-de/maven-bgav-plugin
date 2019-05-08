@@ -11,17 +11,22 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.errors.NoWorkTreeException;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
+import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -47,8 +52,8 @@ public class Plugin extends AbstractMojo {
 
     @Parameter
     private boolean failOnMissingBranchId = true;
-    
-    @Parameter
+
+    @Parameter(property = "branchName")
     private String branchName;
 
     @Parameter
@@ -72,6 +77,8 @@ public class Plugin extends AbstractMojo {
         File pomfile = new File("pom.xml");
         Model model = getModel(pomfile);
         log.info("Project " + model);
+        log.info("failOnMissingBranchId: " + failOnMissingBranchId);
+        log.info("branchName: " + branchName);
 
         // 1. check for SNAPSHOT -> if not: abort
         if (!checkForSnapshot(model)) {
@@ -95,52 +102,43 @@ public class Plugin extends AbstractMojo {
         checkStatus(git);
 
         Repository repo = git.getRepository();
-        try {
-            String branch;
-            if (branchName == null && branchName.isEmpty()) {
-                branch = repo.getBranch();
+        String commitID = getCommitId(git);
+        String branch = checkBranchName(repo, commitID);
+        if (branch == null) {
+            throw new MojoExecutionException("could not get Git branch");
+        } else if (branch.startsWith("feature")) {
+            // NCX-14 check for feature branch
+            String pomTicketID, ticketID;
+            if (regex_ticket == null || regex_ticket.isEmpty()) {
+                log.info("RegEx for ticket ID is empty, use default one");
+                pomTicketID = getMatchFirst(model.getVersion(), REGEX_TICKET);
+                ticketID = getMatchFirst(branch, REGEX_TICKET);
             } else {
-                branch = branchName;
+                log.info("use provided RegEx for ticket ID");
+                pomTicketID = getMatchFirst(model.getVersion(), regex_ticket);
+                ticketID = getMatchFirst(branch, regex_ticket);
             }
-            log.info("Git branch: " + branch);
-            if (branch == null) {
-                throw new MojoExecutionException("could not get Git branch");
-            } else if (branch.startsWith("feature")) {
-                // NCX-14 check for feature branch
-                String pomTicketID, ticketID;
-                if (regex_ticket == null || regex_ticket.isEmpty()) {
-                    log.info("RegEx for ticket ID is empty, use default one");
-                    pomTicketID = getMatchFirst(model.getVersion(), REGEX_TICKET);
-                    ticketID = getMatchFirst(branch, REGEX_TICKET);
-                } else {
-                    log.info("use provided RegEx for ticket ID");
-                    pomTicketID = getMatchFirst(model.getVersion(), regex_ticket);
-                    ticketID = getMatchFirst(branch, regex_ticket);
+            log.info("POM Version: " + pomTicketID);
+            log.info("ticketID: " + ticketID);
+            if (pomTicketID == null) {
+                // NCX-16 write new verion to POM
+                writeChangedPOM(model, git, ticketID, pomfile);
+                commitAndPush(git, ticketID);
+                if (failOnMissingBranchId) {
+                    // NCX-26
+                    throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
                 }
-                log.info("POM Version: " + pomTicketID);
-                log.info("ticketID: " + ticketID);
-                if (pomTicketID == null) {
-                    // NCX-16 write new verion to POM
-                    writeChangedPOM(model, git, ticketID, pomfile);
-                    commitAndPush(git, ticketID);
-                    if (failOnMissingBranchId) {
-                        // NCX-26
-                        throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
-                    }
-                } else if (ticketID.equals(pomTicketID)) {
-                    // POM Version has TicketID
-                    log.info("Git branch ticket ID matches POM ticket ID ... done.");
-                } else {
-                    // POM Version has TicketID
-                    throw new MojoExecutionException("mismatch Git branch ticket ID and POM branch version ticket ID");
-                }
-            } else if (checkForBranch(branch)) {
-                throw new MojoExecutionException("not allowed branch: " + branch);
+            } else if (ticketID.equals(pomTicketID)) {
+                // POM Version has TicketID
+                log.info("Git branch ticket ID matches POM ticket ID ... done.");
             } else {
-                log.info("no Git feature branch ... done.");
+                // POM Version has TicketID
+                throw new MojoExecutionException("mismatch Git branch ticket ID and POM branch version ticket ID");
             }
-        } catch (IOException | MojoExecutionException ex) {
-            throw new MojoExecutionException("could not get branch: " + ex);
+        } else if (checkForAllowedBranch(branch)) {
+            throw new MojoExecutionException("not allowed branch: " + branch);
+        } else {
+            log.info("no Git feature branch ... done.");
         }
         repo.close();
         git.close();
@@ -234,7 +232,7 @@ public class Plugin extends AbstractMojo {
      * @param branch
      * @return true/false
      */
-    Boolean checkForBranch(String branch) {
+    Boolean checkForAllowedBranch(String branch) {
         String check = "";
         if (regex_branch == null || regex_branch.isEmpty()) {
             log.info("RegEx for branch is empty, use default one");
@@ -245,6 +243,63 @@ public class Plugin extends AbstractMojo {
             check = getMatchFirst(branch, regex_branch);
             return check == null ? false : !check.isEmpty();
         }
+    }
+
+    /**
+     * get commit id
+     *
+     * @param git
+     * @return commit id
+     * @throws MojoExecutionException
+     */
+    String getCommitId(Git git) throws MojoExecutionException {
+        String commitId;
+        try {
+            List<Ref> refs = git.branchList().setContains("HEAD").setListMode(ListBranchCommand.ListMode.ALL).call();
+            Ref ref = refs.get(0);
+            ObjectId objectId = ref.getObjectId();
+            commitId = objectId == null ? "" : objectId.getName();
+            log.info("commit id: " + commitId);
+        } catch (GitAPIException e) {
+            log.error("cannot get commit id: " + e);
+            throw new MojoExecutionException("cannot get commit id");
+        }
+        return commitId;
+    }
+
+    /**
+     * check branch name equals commitId --> then running on Jenkins
+     *
+     * @param repo
+     * @param commitId
+     * @return branch
+     */
+    String checkBranchName(Repository repo, String commitId) throws MojoExecutionException {
+        String branch = "";
+        try {
+            branch = repo.getBranch();
+            if (branch == null) {
+                throw new MojoExecutionException("cannot get branch");
+            } else if (branch.equals(commitId)) {
+                // running on Jenkins
+                log.info("running on Jenkins...");
+                if (branchName == null || branchName.isEmpty()) {
+                    throw new MojoExecutionException("Maven parameter 'branchName' is not set");
+                }
+                branch = branchName;
+            } else {
+                if (branchName == null || branchName.isEmpty()) {
+                    branch = repo.getBranch();
+                } else {
+                    branch = branchName;
+                }
+            }
+            log.info("Git branch: " + branch);
+        } catch (IOException | MojoExecutionException ex) {
+            log.error("cannot get branch: " + ex);
+            throw new MojoExecutionException("cannot get branch");
+        }
+        return branch;
     }
 
     /**

@@ -6,6 +6,7 @@ import org.junit.Test;
 import java.io.File;
 import java.util.UUID;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.Repository;
 import org.junit.Assert;
 import static org.junit.Assert.assertFalse;
 
@@ -53,13 +54,26 @@ public class PluginTest {
     }
 
     @Test
-    public void testCheckForBranch() {
+    public void testCheckForAllowedBranch() {
         Plugin plugin = new Plugin();
-        assertTrue(plugin.checkForBranch("feature"));
-        assertTrue(plugin.checkForBranch("bugfix"));
-        assertTrue(plugin.checkForBranch("hotfix"));
-        assertFalse(plugin.checkForBranch("master"));
-        assertFalse(plugin.checkForBranch("develop"));
-        assertFalse(plugin.checkForBranch("release"));
+        assertTrue(plugin.checkForAllowedBranch("feature"));
+        assertTrue(plugin.checkForAllowedBranch("bugfix"));
+        assertTrue(plugin.checkForAllowedBranch("hotfix"));
+        assertFalse(plugin.checkForAllowedBranch("master"));
+        assertFalse(plugin.checkForAllowedBranch("develop"));
+        assertFalse(plugin.checkForAllowedBranch("release"));
     }
+
+    /*@Test
+    public void testCheckBranch() throws MojoExecutionException {
+        Plugin plugin = new Plugin();
+        Model model = plugin.getModel(new File("pom.xml"));
+        Git git = plugin.getGitRepo(model);
+        Repository repo = git.getRepository();
+        String commitId = plugin.getCommitId(git);
+        String branch = plugin.checkBranchName(repo, commitId);
+        System.out.println("commitid: " + commitId);
+        System.out.println("branch:   " + branch);
+        assertTrue(commitId, true);
+    }*/
 }
