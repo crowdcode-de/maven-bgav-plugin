@@ -77,6 +77,8 @@ public class Plugin extends AbstractMojo {
         File pomfile = new File("pom.xml");
         Model model = getModel(pomfile);
         log.info("Project " + model);
+        log.info("failOnMissingBranchId: " + failOnMissingBranchId);
+        log.info("branchName: " + branchName);
 
         // 1. check for SNAPSHOT -> if not: abort
         if (!checkForSnapshot(model)) {
@@ -273,7 +275,6 @@ public class Plugin extends AbstractMojo {
      * @return branch
      */
     String checkBranchName(Repository repo, String commitId) throws MojoExecutionException {
-        log.info("branchName: " + branchName);
         String branch = "";
         try {
             branch = repo.getBranch();
