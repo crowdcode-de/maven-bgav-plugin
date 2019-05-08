@@ -113,27 +113,28 @@ public class Plugin extends AbstractMojo {
             throw new MojoExecutionException("could not get Git branch");
         } else if (branch.startsWith("feature")) {
             // NCX-14 check for feature branch
-            String pomTicketID, ticketID;
+            log.info("POM Version: " + model.getVersion());
+            String pomTicketId, ticketId;
             if (regex_ticket == null || regex_ticket.isEmpty()) {
                 log.info("RegEx for ticket ID is empty, use default one");
-                pomTicketID = getMatchFirst(model.getVersion(), REGEX_TICKET);
-                ticketID = getMatchFirst(branch, REGEX_TICKET);
+                pomTicketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
+                ticketId = getMatchFirst(branch, REGEX_TICKET);
             } else {
                 log.info("use provided RegEx for ticket ID");
-                pomTicketID = getMatchFirst(model.getVersion(), regex_ticket);
-                ticketID = getMatchFirst(branch, regex_ticket);
+                pomTicketId = getMatchFirst(model.getVersion(), regex_ticket);
+                ticketId = getMatchFirst(branch, regex_ticket);
             }
-            log.info("POM Version: " + pomTicketID);
-            log.info("ticketID: " + ticketID);
-            if (pomTicketID == null) {
+            log.info("POM ticketId: " + pomTicketId);
+            log.info("ticketId: " + ticketId);
+            if (pomTicketId == null) {
                 // NCX-16 write new verion to POM
-                writeChangedPOM(model, git, ticketID, pomfile);
-                commitAndPush(git, ticketID);
+                writeChangedPOM(model, git, ticketId, pomfile);
+                commitAndPush(git, ticketId);
                 if (failOnMissingBranchId) {
                     // NCX-26
                     throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
                 }
-            } else if (ticketID.equals(pomTicketID)) {
+            } else if (ticketId.equals(pomTicketId)) {
                 // POM Version has TicketID
                 log.info("Git branch ticket ID matches POM ticket ID ... done.");
             } else {
