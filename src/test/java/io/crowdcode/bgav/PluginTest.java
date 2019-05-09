@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Repository;
 import org.junit.Assert;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
 import static org.junit.Assert.assertTrue;
@@ -62,6 +63,15 @@ public class PluginTest {
         assertFalse(plugin.checkForAllowedBranch("master"));
         assertFalse(plugin.checkForAllowedBranch("develop"));
         assertFalse(plugin.checkForAllowedBranch("release"));
+    }
+
+    @Test
+    public void testSetPomVersion() {
+        Plugin plugin = new Plugin();
+        assertEquals(plugin.setPomVersion("1.0.1-SNAPSHOT", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
+        assertEquals(plugin.setPomVersion("1.0.1-SNAPSHOT", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
+        assertEquals(plugin.setPomVersion("1.0.1", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
+        assertEquals(plugin.setPomVersion("1.0.1", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
     }
 
     /*@Test

@@ -319,13 +319,32 @@ public class Plugin extends AbstractMojo {
      */
     void writeChangedPOM(Model model, Git git, String ticketID, File pomfile) throws MojoExecutionException {
         // NCX-15
-        model.setVersion(model.getVersion() + "-" + ticketID + "-SNAPSHOT");
+        model.setVersion(setPomVersion(model.getVersion(), ticketID));
         try (final FileOutputStream fileOutputStream = new FileOutputStream(pomfile)) {
             new MavenXpp3Writer().write(fileOutputStream, model);
         } catch (IOException ex) {
             log.error("IOException: " + ex);
             throw new MojoExecutionException("could not write POM: " + ex);
         }
+    }
+
+    /**
+     * set new POM Version
+     * 
+     * @param pomVersion
+     * @param ticketID
+     * @return new POM Version
+     */
+    String setPomVersion(String pomVersion, String ticketID) {
+        String newPomVersion = "";
+        if (pomVersion.contains("-SNAPSHOT")) {
+            newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-SNAPSHOT"));
+            newPomVersion += "-" + ticketID + "-SNAPSHOT";
+        } else {
+            newPomVersion = pomVersion + "-" + ticketID + "-SNAPSHOT";
+        }
+        log.info("new POM Version: " + newPomVersion);
+        return newPomVersion;
     }
 
     /**
@@ -360,7 +379,7 @@ public class Plugin extends AbstractMojo {
         Matcher matcher = pattern.matcher(search);
         while (matcher.find()) {
             match = matcher.group(1);
-            log.info("Matcher: " + match);
+//            log.info("Matcher: " + match);
         }
         return match;
     }
