@@ -38,21 +38,39 @@ import java.util.regex.Pattern;
 @Mojo(name = "bgav")
 public class Plugin extends AbstractMojo {
 
+    /**
+     * user for Git
+     */
     @Parameter(property = "gituser")
     private String gituser;
 
+    /**
+     * password for Git user
+     */
     @Parameter(property = "gitpassword")
     private String gitpassword;
 
+    /**
+     * RegEx for getting the ticket id
+     */
     @Parameter(property = "regex_ticket")
     private String regex_ticket;
 
+    /**
+     * RegEx for getting the branch
+     */
     @Parameter(property = "regex_branch")
     private String regex_branch;
 
+    /**
+     * flag for fail on Jenkins if missing branch id
+     */
     @Parameter(property = "failOnMissingBranchId")
     private boolean failOnMissingBranchId = true;
 
+    /**
+     * setting branch id for Jenkinsfile
+     */
     @Parameter(property = "branchName")
     private String branchName;
 
@@ -62,11 +80,19 @@ public class Plugin extends AbstractMojo {
     final Log log = getLog();
 
     private final String regexp = "(feature)/([A-Z0-9\\-])*-.*";
+    
+    /**
+     * default RegEx for branch
+     */
     private final String REGEX_BRANCH = "(feature|bugfix|hotfix)";
+
+    /**
+     * default RegEx for ticket id
+     */
     private final String REGEX_TICKET = "(\\p{Upper}{1,}-\\d{1,})";
 
     /**
-     * TODO: document me
+     * Maven plugin for adding ticket id to POM Version, if Git branch is feature, bugfix or hotfix
      *
      * @throws MojoExecutionException
      * @throws MojoFailureException
