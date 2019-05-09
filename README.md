@@ -112,4 +112,5 @@ mvn -Dgituser=xxxx -D=gitpassword=yyyy io.crowdcode:bgav-maven-plugin:bgav
 ## Author
 
 Andreas Ernst, andreas.ernst@crowdcode.io
+
 Marcus Nörder-Tuitje, marcus.noerder-tuitje@crowdcode.io
