@@ -38,25 +38,25 @@ import java.util.regex.Pattern;
 @Mojo(name = "bgav")
 public class Plugin extends AbstractMojo {
 
-    @Parameter
+    @Parameter(property = "gituser")
     private String gituser;
 
-    @Parameter
+    @Parameter(property = "gitpassword")
     private String gitpassword;
 
-    @Parameter
+    @Parameter(property = "regex_ticket")
     private String regex_ticket;
 
-    @Parameter
+    @Parameter(property = "regex_branch")
     private String regex_branch;
 
-    @Parameter
+    @Parameter(property = "failOnMissingBranchId")
     private boolean failOnMissingBranchId = true;
 
     @Parameter(property = "branchName")
     private String branchName;
 
-    @Parameter
+    @Parameter(property = "namespace")
     private String[] namespace;
 
     final Log log = getLog();
@@ -79,6 +79,11 @@ public class Plugin extends AbstractMojo {
         log.info("Project " + model);
         log.info("failOnMissingBranchId: " + failOnMissingBranchId);
         log.info("branchName: " + branchName);
+        if ( (gituser == null || gituser.isEmpty()) || (gitpassword == null || gitpassword.isEmpty())) {
+            log.info("no Git credentials set");
+        } else {
+            log.info("Git credentials set");
+        }
 
         // 1. check for SNAPSHOT -> if not: abort
         if (!checkForSnapshot(model)) {
@@ -108,27 +113,28 @@ public class Plugin extends AbstractMojo {
             throw new MojoExecutionException("could not get Git branch");
         } else if (branch.startsWith("feature")) {
             // NCX-14 check for feature branch
-            String pomTicketID, ticketID;
+            log.info("POM Version: " + model.getVersion());
+            String pomTicketId, ticketId;
             if (regex_ticket == null || regex_ticket.isEmpty()) {
                 log.info("RegEx for ticket ID is empty, use default one");
-                pomTicketID = getMatchFirst(model.getVersion(), REGEX_TICKET);
-                ticketID = getMatchFirst(branch, REGEX_TICKET);
+                pomTicketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
+                ticketId = getMatchFirst(branch, REGEX_TICKET);
             } else {
                 log.info("use provided RegEx for ticket ID");
-                pomTicketID = getMatchFirst(model.getVersion(), regex_ticket);
-                ticketID = getMatchFirst(branch, regex_ticket);
+                pomTicketId = getMatchFirst(model.getVersion(), regex_ticket);
+                ticketId = getMatchFirst(branch, regex_ticket);
             }
-            log.info("POM Version: " + pomTicketID);
-            log.info("ticketID: " + ticketID);
-            if (pomTicketID == null) {
+            log.info("POM ticketId: " + pomTicketId);
+            log.info("ticketId: " + ticketId);
+            if (pomTicketId == null) {
                 // NCX-16 write new verion to POM
-                writeChangedPOM(model, git, ticketID, pomfile);
-                commitAndPush(git, ticketID);
+                writeChangedPOM(model, git, ticketId, pomfile);
+                commitAndPush(git, ticketId);
                 if (failOnMissingBranchId) {
                     // NCX-26
                     throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
                 }
-            } else if (ticketID.equals(pomTicketID)) {
+            } else if (ticketId.equals(pomTicketId)) {
                 // POM Version has TicketID
                 log.info("Git branch ticket ID matches POM ticket ID ... done.");
             } else {
@@ -313,13 +319,32 @@ public class Plugin extends AbstractMojo {
      */
     void writeChangedPOM(Model model, Git git, String ticketID, File pomfile) throws MojoExecutionException {
         // NCX-15
-        model.setVersion(model.getVersion() + "-" + ticketID + "-SNAPSHOT");
+        model.setVersion(setPomVersion(model.getVersion(), ticketID));
         try (final FileOutputStream fileOutputStream = new FileOutputStream(pomfile)) {
             new MavenXpp3Writer().write(fileOutputStream, model);
         } catch (IOException ex) {
             log.error("IOException: " + ex);
             throw new MojoExecutionException("could not write POM: " + ex);
         }
+    }
+
+    /**
+     * set new POM Version
+     * 
+     * @param pomVersion
+     * @param ticketID
+     * @return new POM Version
+     */
+    String setPomVersion(String pomVersion, String ticketID) {
+        String newPomVersion = "";
+        if (pomVersion.contains("-SNAPSHOT")) {
+            newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-SNAPSHOT"));
+            newPomVersion += "-" + ticketID + "-SNAPSHOT";
+        } else {
+            newPomVersion = pomVersion + "-" + ticketID + "-SNAPSHOT";
+        }
+        log.info("new POM Version: " + newPomVersion);
+        return newPomVersion;
     }
 
     /**
