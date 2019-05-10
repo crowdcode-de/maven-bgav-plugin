@@ -23,6 +23,7 @@ import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -30,6 +31,17 @@ import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
 
 /**
  *
@@ -80,7 +92,7 @@ public class Plugin extends AbstractMojo {
     final Log log = getLog();
 
     private final String regexp = "(feature)/([A-Z0-9\\-])*-.*";
-    
+
     /**
      * default RegEx for branch
      */
@@ -92,7 +104,8 @@ public class Plugin extends AbstractMojo {
     private final String REGEX_TICKET = "(\\p{Upper}{1,}-\\d{1,})";
 
     /**
-     * Maven plugin for adding ticket id to POM Version, if Git branch is feature, bugfix or hotfix
+     * Maven plugin for adding ticket id to POM Version, if Git branch is
+     * feature, bugfix or hotfix
      *
      * @throws MojoExecutionException
      * @throws MojoFailureException
@@ -105,7 +118,7 @@ public class Plugin extends AbstractMojo {
         log.info("Project " + model);
         log.info("failOnMissingBranchId: " + failOnMissingBranchId);
         log.info("branchName: " + branchName);
-        if ( (gituser == null || gituser.isEmpty()) || (gitpassword == null || gitpassword.isEmpty())) {
+        if ((gituser == null || gituser.isEmpty()) || (gitpassword == null || gitpassword.isEmpty())) {
             log.info("no Git credentials set");
         } else {
             log.info("Git credentials set");
@@ -154,7 +167,8 @@ public class Plugin extends AbstractMojo {
             log.info("ticketId: " + ticketId);
             if (pomTicketId == null) {
                 // NCX-16 write new verion to POM
-                writeChangedPOM(model, git, ticketId, pomfile);
+//                writeChangedPOM(model, git, ticketId, pomfile);
+                writeChangedPomWithXPath(pomfile, ticketId);
                 commitAndPush(git, ticketId);
                 if (failOnMissingBranchId) {
                     // NCX-26
@@ -172,7 +186,6 @@ public class Plugin extends AbstractMojo {
         } else {
             log.info("no Git feature branch ... done.");
         }
-        repo.close();
         git.close();
     }
 
@@ -355,8 +368,35 @@ public class Plugin extends AbstractMojo {
     }
 
     /**
-     * set new POM Version
+     * read end write POM with XPAth, due to an error in MavenXpp3Writer
      * 
+     * @param pomfile
+     * @param ticketID
+     * @throws MojoExecutionException 
+     */
+    void writeChangedPomWithXPath(File pomfile, String ticketID ) throws MojoExecutionException {
+        try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {
+            DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
+            Document document = documentBuilder.parse(fileInputStream);
+            XPath xPath = XPathFactory.newInstance().newXPath();
+            String expression = "/project/version";
+            NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
+            String oldPomVersion = nodeList.item(0).getTextContent();
+//            log.info("nodeList: " + nodeList.getLength());
+//            log.info("nodeList: " + nodeList.item(0).getTextContent());
+            nodeList.item(0).setTextContent(setPomVersion(oldPomVersion, ticketID));
+            Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            transformer.transform(new DOMSource(document), new StreamResult(pomfile));
+        } catch (Exception ex) {
+            log.error("IOException: " + ex);
+            throw new MojoExecutionException("could not write POM: " + ex);
+        }
+    }
+
+    /**
+     * set new POM Version
+     *
      * @param pomVersion
      * @param ticketID
      * @return new POM Version
