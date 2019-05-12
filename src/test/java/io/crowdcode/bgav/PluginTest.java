@@ -27,19 +27,22 @@ public class PluginTest {
     @Test(expected = MojoExecutionException.class)
     public void testGetModel() throws MojoExecutionException {
         Plugin plugin = new Plugin();
-        plugin.getModel(new File(UUID.randomUUID().toString()));
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLogs());
+        mavenHandler.getModel(new File(UUID.randomUUID().toString()));
     }
 
     @Test
     public void testGetModel2() throws MojoExecutionException {
         Plugin plugin = new Plugin();
-        plugin.getModel(new File("pom.xml"));
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLogs());
+        mavenHandler.getModel(new File("pom.xml"));
     }
 
     @Test
     public void testGetGitRepo() throws MojoExecutionException {
         Plugin plugin = new Plugin();
-        Model model = plugin.getModel(new File("pom.xml"));
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLogs());
+        Model model = mavenHandler.getModel(new File("pom.xml"));
         Git git = plugin.getGitRepo(model);
         Assert.assertNotNull(git);
     }

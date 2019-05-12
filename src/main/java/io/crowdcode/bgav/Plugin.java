@@ -86,6 +86,9 @@ public class Plugin extends AbstractMojo {
     @Parameter(property = "branchName")
     private String branchName;
 
+    /**
+     * setting for effected group ids walking through the dependencies
+     */
     @Parameter(property = "namespace")
     private String[] namespace;
 
@@ -114,7 +117,8 @@ public class Plugin extends AbstractMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
 
         File pomfile = new File("pom.xml");
-        Model model = getModel(pomfile);
+        MavenHandler mavenHandler = new MavenHandler(log);
+        Model model = mavenHandler.getModel(pomfile);
         log.info("Project " + model);
         log.info("failOnMissingBranchId: " + failOnMissingBranchId);
         log.info("branchName: " + branchName);
@@ -138,15 +142,16 @@ public class Plugin extends AbstractMojo {
         // (GIT) must not be develop, master, release
 
         // check for Git Repo -> @todo: autocloseable
-        Git git = getGitRepo(model);
+        GitHandler gitHandler = new GitHandler(log);
+        Git git = gitHandler.getGitRepo(model);
         if (git == null) {
             return;
         }
 
-        checkStatus(git);
+        gitHandler.checkStatus(git);
 
         Repository repo = git.getRepository();
-        String commitID = getCommitId(git);
+        String commitID = gitHandler.getCommitId(git);
         String branch = checkBranchName(repo, commitID);
         if (branch == null) {
             throw new MojoExecutionException("could not get Git branch");
@@ -169,7 +174,9 @@ public class Plugin extends AbstractMojo {
                 // NCX-16 write new verion to POM
 //                writeChangedPOM(model, git, ticketId, pomfile);
                 writeChangedPomWithXPath(pomfile, ticketId);
-                commitAndPush(git, ticketId);
+                gitHandler.setGituser(gituser);
+                gitHandler.setGitpassword(gitpassword);
+                gitHandler.commitAndPush(git, ticketId);
                 if (failOnMissingBranchId) {
                     // NCX-26
                     throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
@@ -187,78 +194,6 @@ public class Plugin extends AbstractMojo {
             log.info("no Git feature branch ... done.");
         }
         git.close();
-    }
-
-    /**
-     * get Maven project model from POM
-     *
-     * @param pomfile
-     * @return
-     * @throws MojoExecutionException
-     */
-    Model getModel(File pomfile) throws MojoExecutionException {
-        Model model = null;
-        FileReader reader = null;
-        MavenXpp3Reader mavenreader = new MavenXpp3Reader();
-        try {
-            reader = new FileReader(pomfile);
-            model = mavenreader.read(reader);
-            model.setPomFile(pomfile);
-        } catch (IOException | XmlPullParserException ex) {
-            getLog().error("Error: " + ex);
-            throw new MojoExecutionException("could not read POM: " + ex);
-        }
-        return model;
-    }
-
-    /**
-     * check for Git status abort if POM has changed
-     *
-     * @param git
-     * @throws MojoExecutionException
-     */
-    void checkStatus(Git git) throws MojoExecutionException {
-        try {
-            Status status = git.status().call();
-//            log.info("Git status: " + status);
-            log.info("hasUncommittedChanges: " + status.hasUncommittedChanges());
-            Set<String> changes = status.getModified();
-            log.info("Git changes: " + changes);
-            /*for (String change : changes) {
-                log.info("Git changes: " + change);
-                if (change.equals("pom.xml")) {
-                    throw new MojoExecutionException("POM is not commited... please commit before building application.");
-                }
-            }*/
-            if (changes.contains("pom.xml")) {
-                throw new MojoExecutionException("POM is not commited... please commit before building application.");
-            }
-        } catch (GitAPIException | NoWorkTreeException ex) {
-            getLog().error("Git error: " + ex);
-            throw new MojoExecutionException("Git status failed: " + ex);
-        }
-    }
-
-    /**
-     * check for Git Repository
-     *
-     * @param model
-     * @return Git
-     * @throws MojoExecutionException
-     */
-    Git getGitRepo(Model model) throws MojoExecutionException {
-        Git git = null;
-        try {
-            git = Git.open(model.getProjectDirectory());
-            log.info(git.toString());
-        } catch (RepositoryNotFoundException ex) {
-            // no Git Repo -> done.
-            log.info("there is no Git repo ... done.");
-            return git;
-        } catch (IOException ex) {
-            throw new MojoExecutionException("could not read Git repo: " + ex);
-        }
-        return git;
     }
 
     /**
@@ -288,28 +223,6 @@ public class Plugin extends AbstractMojo {
             check = getMatchFirst(branch, regex_branch);
             return check == null ? false : !check.isEmpty();
         }
-    }
-
-    /**
-     * get commit id
-     *
-     * @param git
-     * @return commit id
-     * @throws MojoExecutionException
-     */
-    String getCommitId(Git git) throws MojoExecutionException {
-        String commitId;
-        try {
-            List<Ref> refs = git.branchList().setContains("HEAD").setListMode(ListBranchCommand.ListMode.ALL).call();
-            Ref ref = refs.get(0);
-            ObjectId objectId = ref.getObjectId();
-            commitId = objectId == null ? "" : objectId.getName();
-            log.info("commit id: " + commitId);
-        } catch (GitAPIException e) {
-            log.error("cannot get commit id: " + e);
-            throw new MojoExecutionException("cannot get commit id");
-        }
-        return commitId;
     }
 
     /**
@@ -348,26 +261,6 @@ public class Plugin extends AbstractMojo {
     }
 
     /**
-     * write changed POM
-     *
-     * @param model
-     * @param git
-     * @param ticketID
-     * @param pomfile
-     * @throws MojoExecutionException
-     */
-    void writeChangedPOM(Model model, Git git, String ticketID, File pomfile) throws MojoExecutionException {
-        // NCX-15
-        model.setVersion(setPomVersion(model.getVersion(), ticketID));
-        try (final FileOutputStream fileOutputStream = new FileOutputStream(pomfile)) {
-            new MavenXpp3Writer().write(fileOutputStream, model);
-        } catch (IOException ex) {
-            log.error("IOException: " + ex);
-            throw new MojoExecutionException("could not write POM: " + ex);
-        }
-    }
-
-    /**
      * read end write POM with XPAth, due to an error in MavenXpp3Writer
      * 
      * @param pomfile
@@ -385,50 +278,12 @@ public class Plugin extends AbstractMojo {
             String oldPomVersion = nodeList.item(0).getTextContent();
 //            log.info("nodeList: " + nodeList.getLength());
 //            log.info("nodeList: " + nodeList.item(0).getTextContent());
-            nodeList.item(0).setTextContent(setPomVersion(oldPomVersion, ticketID));
+            nodeList.item(0).setTextContent(new GitHandler(log).setPomVersion(oldPomVersion, ticketID));
             Transformer transformer = TransformerFactory.newInstance().newTransformer();
             transformer.transform(new DOMSource(document), new StreamResult(pomfile));
         } catch (Exception ex) {
             log.error("IOException: " + ex);
             throw new MojoExecutionException("could not write POM: " + ex);
-        }
-    }
-
-    /**
-     * set new POM Version
-     *
-     * @param pomVersion
-     * @param ticketID
-     * @return new POM Version
-     */
-    String setPomVersion(String pomVersion, String ticketID) {
-        String newPomVersion = "";
-        if (pomVersion.contains("-SNAPSHOT")) {
-            newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-SNAPSHOT"));
-            newPomVersion += "-" + ticketID + "-SNAPSHOT";
-        } else {
-            newPomVersion = pomVersion + "-" + ticketID + "-SNAPSHOT";
-        }
-        log.info("new POM Version: " + newPomVersion);
-        return newPomVersion;
-    }
-
-    /**
-     * Git POM commit and push
-     *
-     * @param git
-     * @param ticketID
-     * @throws MojoExecutionException
-     */
-    void commitAndPush(Git git, String ticketID) throws MojoExecutionException {
-        try {
-            CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
-            git.add().addFilepattern("pom.xml").call();
-            git.commit().setMessage(ticketID + " - BGAV - set correkt branched version").call();
-            git.push().setCredentialsProvider(cp).call();
-        } catch (GitAPIException ex) {
-            log.error("GitAPIException: " + ex);
-            throw new MojoExecutionException("Git commit/push failed: " + ex);
         }
     }
 
@@ -448,5 +303,9 @@ public class Plugin extends AbstractMojo {
 //            log.info("Matcher: " + match);
         }
         return match;
+    }
+
+    public Log getLogs() {
+        return log;
     }
 }
