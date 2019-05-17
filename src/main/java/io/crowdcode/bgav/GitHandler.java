@@ -12,6 +12,7 @@ import org.eclipse.jgit.errors.NoWorkTreeException;
 import org.eclipse.jgit.errors.RepositoryNotFoundException;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.transport.CredentialsProvider;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
@@ -163,6 +164,41 @@ public class GitHandler {
             log.error("IOException: " + ex);
             throw new MojoExecutionException("could not write POM: " + ex);
         }
+    }
+
+    /**
+     * check branch name equals commitId --> then running on Jenkins
+     *
+     * @param repo
+     * @param commitId
+     * @return branch
+     */
+    public String checkBranchName(Repository repo, String commitId, String branchName) throws MojoExecutionException {
+        String branch = "";
+        try {
+            branch = repo.getBranch();
+            if (branch == null) {
+                throw new MojoExecutionException("cannot get branch");
+            } else if (branch.equals(commitId)) {
+                // running on Jenkins
+                log.info("running on Jenkins...");
+                if (branchName == null || branchName.isEmpty()) {
+                    throw new MojoExecutionException("Maven parameter 'branchName' is not set");
+                }
+                branch = branchName;
+            } else {
+                if (branchName == null || branchName.isEmpty()) {
+                    branch = repo.getBranch();
+                } else {
+                    branch = branchName;
+                }
+            }
+            log.info("Git branch: " + branch);
+        } catch (IOException | MojoExecutionException ex) {
+            log.error("cannot get branch: " + ex);
+            throw new MojoExecutionException("cannot get branch");
+        }
+        return branch;
     }
 
     public void setGituser(String gituser) {

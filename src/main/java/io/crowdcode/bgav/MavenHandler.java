@@ -2,7 +2,6 @@ package io.crowdcode.bgav;
 
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
@@ -66,5 +65,15 @@ public class MavenHandler {
         }
         log.info("new POM Version: " + newPomVersion);
         return newPomVersion;
+    }
+
+    /**
+     * check Git for SNAPSHOT
+     *
+     * @param model
+     * @return true/false
+     */
+    Boolean checkForSnapshot(Model model) {
+        return model.getVersion().contains("SNAPSHOT");
     }
 }

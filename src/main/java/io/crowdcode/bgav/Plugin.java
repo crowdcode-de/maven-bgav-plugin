@@ -1,47 +1,18 @@
 package io.crowdcode.bgav;
 
 import org.apache.maven.model.Model;
-import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
-import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
-import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.ListBranchCommand;
-import org.eclipse.jgit.api.Status;
-import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.errors.NoWorkTreeException;
-import org.eclipse.jgit.errors.RepositoryNotFoundException;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.transport.CredentialsProvider;
-import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.List;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
 
 /**
  *
@@ -129,7 +100,7 @@ public class Plugin extends AbstractMojo {
         }
 
         // 1. check for SNAPSHOT -> if not: abort
-        if (!checkForSnapshot(model)) {
+        if (!mavenHandler.checkForSnapshot(model)) {
             throw new MojoExecutionException("project is not a SNAPSHOT");
         }
         // (POM) {Version}-SNAPSHOT
@@ -152,7 +123,7 @@ public class Plugin extends AbstractMojo {
 
         Repository repo = git.getRepository();
         String commitID = gitHandler.getCommitId(git);
-        String branch = checkBranchName(repo, commitID);
+        String branch = gitHandler.checkBranchName(repo, commitID, branchName);
         if (branch == null) {
             throw new MojoExecutionException("could not get Git branch");
         } else if (branch.startsWith("feature")) {
@@ -172,11 +143,7 @@ public class Plugin extends AbstractMojo {
             log.info("ticketId: " + ticketId);
             if (pomTicketId == null) {
                 // NCX-16 write new verion to POM
-//                writeChangedPOM(model, git, ticketId, pomfile);
-                XMLHandler xmlHandler = new XMLHandler(log);
-                xmlHandler.writeChangedPomWithXPath(pomfile, ticketId);
-//                gitHandler.setGituser(gituser);
-//                gitHandler.setGitpassword(gitpassword);
+                new XMLHandler(log).writeChangedPomWithXPath(pomfile, ticketId);
                 gitHandler.commitAndPush(git, ticketId);
                 if (failOnMissingBranchId) {
                     // NCX-26
@@ -198,16 +165,6 @@ public class Plugin extends AbstractMojo {
     }
 
     /**
-     * check Git for SNAPSHOT
-     *
-     * @param model
-     * @return true/false
-     */
-    Boolean checkForSnapshot(Model model) {
-        return model.getVersion().contains("SNAPSHOT");
-    }
-
-    /**
      * check Git for allowed branch
      *
      * @param branch
@@ -224,41 +181,6 @@ public class Plugin extends AbstractMojo {
             check = getMatchFirst(branch, regex_branch);
             return check == null ? false : !check.isEmpty();
         }
-    }
-
-    /**
-     * check branch name equals commitId --> then running on Jenkins
-     *
-     * @param repo
-     * @param commitId
-     * @return branch
-     */
-    String checkBranchName(Repository repo, String commitId) throws MojoExecutionException {
-        String branch = "";
-        try {
-            branch = repo.getBranch();
-            if (branch == null) {
-                throw new MojoExecutionException("cannot get branch");
-            } else if (branch.equals(commitId)) {
-                // running on Jenkins
-                log.info("running on Jenkins...");
-                if (branchName == null || branchName.isEmpty()) {
-                    throw new MojoExecutionException("Maven parameter 'branchName' is not set");
-                }
-                branch = branchName;
-            } else {
-                if (branchName == null || branchName.isEmpty()) {
-                    branch = repo.getBranch();
-                } else {
-                    branch = branchName;
-                }
-            }
-            log.info("Git branch: " + branch);
-        } catch (IOException | MojoExecutionException ex) {
-            log.error("cannot get branch: " + ex);
-            throw new MojoExecutionException("cannot get branch");
-        }
-        return branch;
     }
 
     /**
