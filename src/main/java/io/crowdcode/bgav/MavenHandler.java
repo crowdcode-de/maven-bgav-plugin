@@ -76,4 +76,8 @@ public class MavenHandler {
     Boolean checkForSnapshot(Model model) {
         return model.getVersion().contains("SNAPSHOT");
     }
+
+    public void checkforDependencies(String[] groupIds) {
+
+    }
 }

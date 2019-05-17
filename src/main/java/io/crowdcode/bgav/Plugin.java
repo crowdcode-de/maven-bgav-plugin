@@ -161,6 +161,8 @@ public class Plugin extends AbstractMojo {
         } else {
             log.info("no Git feature branch ... done.");
         }
+        // NCX-36 check for affected GroupIds in dependencies
+        mavenHandler.checkforDependencies(namespace);
         git.close();
     }
 
