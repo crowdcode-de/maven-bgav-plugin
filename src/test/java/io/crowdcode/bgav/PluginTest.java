@@ -43,7 +43,8 @@ public class PluginTest {
         Plugin plugin = new Plugin();
         MavenHandler mavenHandler = new MavenHandler(plugin.getLogs());
         Model model = mavenHandler.getModel(new File("pom.xml"));
-        Git git = plugin.getGitRepo(model);
+        GitHandler gitHandler = new GitHandler(plugin.getLog());
+        Git git = gitHandler.getGitRepo(model);
         Assert.assertNotNull(git);
     }
 
@@ -71,10 +72,11 @@ public class PluginTest {
     @Test
     public void testSetPomVersion() {
         Plugin plugin = new Plugin();
-        assertEquals(plugin.setPomVersion("1.0.1-SNAPSHOT", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
-        assertEquals(plugin.setPomVersion("1.0.1-SNAPSHOT", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
-        assertEquals(plugin.setPomVersion("1.0.1", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
-        assertEquals(plugin.setPomVersion("1.0.1", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLog());
+        assertEquals(mavenHandler.setPomVersion("1.0.1-SNAPSHOT", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
+        assertEquals(mavenHandler.setPomVersion("1.0.1-SNAPSHOT", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
+        assertEquals(mavenHandler.setPomVersion("1.0.1", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
+        assertEquals(mavenHandler.setPomVersion("1.0.1", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
     }
 
     /*@Test

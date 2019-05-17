@@ -40,7 +40,7 @@ public class GitHandler {
     @Parameter(property = "gitpassword")
     private String gitpassword;
 
-    final Log log;
+    private final Log log;
 
     public GitHandler() {
         log = null;
@@ -48,6 +48,12 @@ public class GitHandler {
 
     public GitHandler(Log log) {
         this.log = log;
+    }
+
+    public GitHandler(Log log, String gituser, String gitpassword) {
+        this.log = log;
+        this.gituser = gituser;
+        this.gitpassword = gitpassword;
     }
 
     /**
@@ -145,40 +151,21 @@ public class GitHandler {
      * write changed POM
      *
      * @param model
-     * @param git
+     * @param mavenHandler
      * @param ticketID
      * @param pomfile
      * @throws MojoExecutionException
      * @deprecated due to the error of removing packaging information from POM
      */
-    public void writeChangedPOM(Model model, Git git, String ticketID, File pomfile) throws MojoExecutionException {
+    public void writeChangedPOM(Model model, MavenHandler mavenHandler, String ticketID, File pomfile) throws MojoExecutionException {
         // NCX-15
-        model.setVersion(setPomVersion(model.getVersion(), ticketID));
+        model.setVersion(mavenHandler.setPomVersion(model.getVersion(), ticketID));
         try (final FileOutputStream fileOutputStream = new FileOutputStream(pomfile)) {
             new MavenXpp3Writer().write(fileOutputStream, model);
         } catch (IOException ex) {
             log.error("IOException: " + ex);
             throw new MojoExecutionException("could not write POM: " + ex);
         }
-    }
-
-    /**
-     * set new POM Version
-     *
-     * @param pomVersion
-     * @param ticketID
-     * @return new POM Version
-     */
-    public String setPomVersion(String pomVersion, String ticketID) {
-        String newPomVersion = "";
-        if (pomVersion.contains("-SNAPSHOT")) {
-            newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-SNAPSHOT"));
-            newPomVersion += "-" + ticketID + "-SNAPSHOT";
-        } else {
-            newPomVersion = pomVersion + "-" + ticketID + "-SNAPSHOT";
-        }
-        log.info("new POM Version: " + newPomVersion);
-        return newPomVersion;
     }
 
     public void setGituser(String gituser) {

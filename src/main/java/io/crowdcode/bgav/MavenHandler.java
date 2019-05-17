@@ -17,7 +17,7 @@ import java.io.IOException;
  */
 public class MavenHandler {
 
-    final Log log;
+    private final Log log;
 
     public MavenHandler() {
         log = null;
@@ -47,5 +47,24 @@ public class MavenHandler {
             throw new MojoExecutionException("could not read POM: " + ex);
         }
         return model;
+    }
+
+    /**
+     * set new POM Version
+     *
+     * @param pomVersion
+     * @param ticketID
+     * @return new POM Version
+     */
+    public String setPomVersion(String pomVersion, String ticketID) {
+        String newPomVersion = "";
+        if (pomVersion.contains("-SNAPSHOT")) {
+            newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-SNAPSHOT"));
+            newPomVersion += "-" + ticketID + "-SNAPSHOT";
+        } else {
+            newPomVersion = pomVersion + "-" + ticketID + "-SNAPSHOT";
+        }
+        log.info("new POM Version: " + newPomVersion);
+        return newPomVersion;
     }
 }

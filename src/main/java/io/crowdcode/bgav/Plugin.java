@@ -142,7 +142,7 @@ public class Plugin extends AbstractMojo {
         // (GIT) must not be develop, master, release
 
         // check for Git Repo -> @todo: autocloseable
-        GitHandler gitHandler = new GitHandler(log);
+        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword);
         Git git = gitHandler.getGitRepo(model);
         if (git == null) {
             return;
@@ -173,9 +173,10 @@ public class Plugin extends AbstractMojo {
             if (pomTicketId == null) {
                 // NCX-16 write new verion to POM
 //                writeChangedPOM(model, git, ticketId, pomfile);
-                writeChangedPomWithXPath(pomfile, ticketId);
-                gitHandler.setGituser(gituser);
-                gitHandler.setGitpassword(gitpassword);
+                XMLHandler xmlHandler = new XMLHandler(log);
+                xmlHandler.writeChangedPomWithXPath(pomfile, ticketId);
+//                gitHandler.setGituser(gituser);
+//                gitHandler.setGitpassword(gitpassword);
                 gitHandler.commitAndPush(git, ticketId);
                 if (failOnMissingBranchId) {
                     // NCX-26
@@ -258,33 +259,6 @@ public class Plugin extends AbstractMojo {
             throw new MojoExecutionException("cannot get branch");
         }
         return branch;
-    }
-
-    /**
-     * read end write POM with XPAth, due to an error in MavenXpp3Writer
-     * 
-     * @param pomfile
-     * @param ticketID
-     * @throws MojoExecutionException 
-     */
-    void writeChangedPomWithXPath(File pomfile, String ticketID ) throws MojoExecutionException {
-        try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {
-            DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
-            Document document = documentBuilder.parse(fileInputStream);
-            XPath xPath = XPathFactory.newInstance().newXPath();
-            String expression = "/project/version";
-            NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
-            String oldPomVersion = nodeList.item(0).getTextContent();
-//            log.info("nodeList: " + nodeList.getLength());
-//            log.info("nodeList: " + nodeList.item(0).getTextContent());
-            nodeList.item(0).setTextContent(new GitHandler(log).setPomVersion(oldPomVersion, ticketID));
-            Transformer transformer = TransformerFactory.newInstance().newTransformer();
-            transformer.transform(new DOMSource(document), new StreamResult(pomfile));
-        } catch (Exception ex) {
-            log.error("IOException: " + ex);
-            throw new MojoExecutionException("could not write POM: " + ex);
-        }
     }
 
     /**
