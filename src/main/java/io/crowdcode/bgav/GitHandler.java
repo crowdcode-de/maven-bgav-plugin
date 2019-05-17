@@ -4,7 +4,6 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
-import org.apache.maven.plugins.annotations.Parameter;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.Status;
@@ -31,13 +30,11 @@ public class GitHandler {
     /**
      * user for Git
      */
-    @Parameter(property = "gituser")
     private String gituser;
 
     /**
      * password for Git user
      */
-    @Parameter(property = "gitpassword")
     private String gitpassword;
 
     private final Log log;
