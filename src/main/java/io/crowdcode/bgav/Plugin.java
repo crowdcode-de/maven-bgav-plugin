@@ -1,7 +1,5 @@
 package io.crowdcode.bgav;
 
-import org.apache.maven.artifact.repository.metadata.Metadata;
-import org.apache.maven.model.DeploymentRepository;
 import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -126,12 +124,12 @@ public class Plugin extends AbstractMojo {
         Repository repo = git.getRepository();
         String commitID = gitHandler.getCommitId(git);
         String branch = gitHandler.checkBranchName(repo, commitID, branchName);
+        String pomTicketId, ticketId = null;
         if (branch == null) {
             throw new MojoExecutionException("could not get Git branch");
         } else if (branch.startsWith("feature")) {
             // NCX-14 check for feature branch
             log.info("POM Version: " + model.getVersion());
-            String pomTicketId, ticketId;
             if (regex_ticket == null || regex_ticket.isEmpty()) {
                 log.info("RegEx for ticket ID is empty, use default one");
                 pomTicketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
@@ -164,7 +162,7 @@ public class Plugin extends AbstractMojo {
             log.info("no Git feature branch");
         }
         // NCX-36 check for affected GroupIds in dependencies
-        mavenHandler.checkforDependencies(model, namespace);
+        mavenHandler.checkforDependencies(model, namespace, ticketId);
         git.close();
     }
 
