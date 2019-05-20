@@ -1,5 +1,7 @@
 package io.crowdcode.bgav;
 
+import org.apache.maven.artifact.repository.metadata.Metadata;
+import org.apache.maven.model.DeploymentRepository;
 import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -151,7 +153,7 @@ public class Plugin extends AbstractMojo {
                 }
             } else if (ticketId.equals(pomTicketId)) {
                 // POM Version has TicketID
-                log.info("Git branch ticket ID matches POM ticket ID ... done.");
+                log.info("Git branch ticket ID matches POM ticket ID");
             } else {
                 // POM Version has TicketID
                 throw new MojoExecutionException("mismatch Git branch ticket ID and POM branch version ticket ID");
@@ -159,10 +161,10 @@ public class Plugin extends AbstractMojo {
         } else if (checkForAllowedBranch(branch)) {
             throw new MojoExecutionException("not allowed branch: " + branch);
         } else {
-            log.info("no Git feature branch ... done.");
+            log.info("no Git feature branch");
         }
         // NCX-36 check for affected GroupIds in dependencies
-        mavenHandler.checkforDependencies(namespace);
+        mavenHandler.checkforDependencies(model, namespace);
         git.close();
     }
 
