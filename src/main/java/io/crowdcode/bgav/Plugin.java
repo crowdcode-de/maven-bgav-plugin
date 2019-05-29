@@ -114,7 +114,7 @@ public class Plugin extends AbstractMojo {
 
         // check for Git Repo -> @todo: autocloseable
         GitHandler gitHandler = new GitHandler(log, gituser, gitpassword);
-        Git git = gitHandler.getGitRepo(model);
+        Git git = gitHandler.getGitLocalRepo(model);
         if (git == null) {
             return;
         }
@@ -162,7 +162,12 @@ public class Plugin extends AbstractMojo {
             log.info("no Git feature branch");
         }
         // NCX-36 check for affected GroupIds in dependencies
-        mavenHandler.checkforDependencies(model, namespace, ticketId);
+        try {
+            mavenHandler.checkforDependencies(model, namespace, ticketId, gituser, gitpassword);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
         git.close();
     }
 
@@ -205,5 +210,14 @@ public class Plugin extends AbstractMojo {
 
     public Log getLogs() {
         return log;
+    }
+
+    /**
+     * create GitHandler
+     *
+     * @return GitHandler
+     */
+    public GitHandler getXGitHandler() {
+        return new GitHandler(log, gituser, gitpassword);
     }
 }

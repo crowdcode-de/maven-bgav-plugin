@@ -42,7 +42,7 @@ public class PluginTest {
         MavenHandler mavenHandler = new MavenHandler(plugin.getLogs());
         Model model = mavenHandler.getModel(new File("pom.xml"));
         GitHandler gitHandler = new GitHandler(plugin.getLog());
-        Git git = gitHandler.getGitRepo(model);
+        Git git = gitHandler.getGitLocalRepo(model);
         Assert.assertNotNull(git);
     }
 
@@ -71,7 +71,7 @@ public class PluginTest {
     public void testCheckBranch() throws MojoExecutionException {
         Plugin plugin = new Plugin();
         Model model = plugin.getModel(new File("pom.xml"));
-        Git git = plugin.getGitRepo(model);
+        Git git = plugin.getGitLocalRepo(model);
         Repository repo = git.getRepository();
         String commitId = plugin.getCommitId(git);
         String branch = plugin.checkBranchName(repo, commitId);

@@ -13,6 +13,7 @@ import org.apache.maven.settings.Settings;
 import org.apache.maven.settings.io.xpp3.SettingsXpp3Reader;
 import org.apache.maven.shared.utils.ReaderFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
+import org.eclipse.jgit.api.Git;
 
 import java.io.*;
 import java.net.Authenticator;
@@ -21,7 +22,6 @@ import java.net.URL;
 import java.util.List;
 
 /**
- *
  * @author andreas
  */
 public class MavenHandler {
@@ -94,7 +94,7 @@ public class MavenHandler {
      * @param groupIds
      * @throws org.apache.maven.plugin.MojoExecutionException
      */
-    public void checkforDependencies(Model model, String[] groupIds, String ticketId) throws MojoExecutionException {
+    public void checkforDependencies(Model model, String[] groupIds, String ticketId, String gituser, String gitpassword) throws MojoExecutionException, Exception {
         if (groupIds == null) {
             log.info("no group id(s) defined ... finished.");
             return;
@@ -108,7 +108,45 @@ public class MavenHandler {
                 if (dependency.getGroupId().contains(groupid)) {
                     log.info("affected dependency found: " + dependency);
                     // @todo: check if branched version of dep exists
-                    log.info("read metadata from: " + deploymentRepository.getUrl() + dependency.getGroupId().replaceAll("[.]", "/") + "/" + dependency.getArtifactId() + "/maven-metadata.xml");
+                    // ->> get POM from dependency --> Git --> SCM --> getDatas
+                    Model dependencyModel = getSCMfromPOM(dependency);
+                    
+                    // get Git Project URI
+                    String dependencyScmUrl = dependencyModel.getScm().getUrl();
+//                    dependencyScmUrl = "https:" + dependencyScmUrl.substring(dependencyScmUrl.indexOf("//"), dependencyScmUrl.length());
+                    log.info("Dependency SCM URL: " + dependencyScmUrl);
+                    if (dependencyScmUrl == null || dependencyScmUrl.isEmpty()) {
+                        throw new MojoExecutionException("not SCM URL for affected dependency found, please add SCM to " + dependency.getArtifactId() + " POM file");
+                    }
+
+                    // @todo: wenn kein repo vorhanden - abbrechen? Ja, da eins vorhanden sein muß
+                    GitHandler gitHandler = new GitHandler(log, gituser, gitpassword);
+
+                    // setup local temporary Directory for Git checkout
+                    FileHelper fileHelper = new FileHelper(log);
+                    File localDirectory = fileHelper.createTempGitCheckoutDirectory(log, dependency.getArtifactId());
+
+                    // clone Repo
+                    Git gitDependency = gitHandler.cloneGitRemoteRepo(dependencyScmUrl, localDirectory);
+                    String[] branches = gitHandler.getBranchesFromDependency(gitDependency);
+                    gitDependency.close();
+                    // delete local Repository
+                    fileHelper.deleteTempGitCheckoutDirectory(log, dependency.getArtifactId());
+
+                    // check for affected groudids
+                    Boolean checkForTicketId = false;
+                    for (String branch : branches) {
+                        log.info("branch: " + branch + " ticketID: " + ticketId);
+                        if ( branch.contains(ticketId)) {
+                            checkForTicketId = true;
+                        }
+                    }
+                    if (!checkForTicketId) {
+                        //@todo: change Version to correct version, throw an error
+                        throw new MojoExecutionException("affected groupid contains not the nessesary ticket id in version");
+                    }
+
+                    /*log.info("read metadata from: " + deploymentRepository.getUrl() + dependency.getGroupId().replaceAll("[.]", "/") + "/" + dependency.getArtifactId() + "/maven-metadata.xml");
                     Server server = getServer(deploymentRepository.getId());
                     List<String> versionen = getVersions(server, deploymentRepository, dependency);
                     for (String version : versionen) {
@@ -118,7 +156,7 @@ public class MavenHandler {
                         if (version.contains(ticketId)) {
 
                         }
-                    }
+                    }*/
 //                    if (new GitHandler(log).) {
 //
 //                    }
@@ -126,6 +164,21 @@ public class MavenHandler {
             }
 
         }
+    }
+
+    /**
+     * get local POM File to get POM-Model from Dependency
+     *
+     * <p>Get the local filepath to the POM file of Dependency </p>
+     *
+     * @param dependency
+     * @return Model
+     * @throws MojoExecutionException
+     */
+    private Model getSCMfromPOM(Dependency dependency) throws MojoExecutionException {
+        File pomfile = new FileHelper(log).getPOMFilePathFromDependency(dependency);
+        log.info("POM File from " + dependency.getArtifactId() + ": " + pomfile);
+        return getModel(pomfile);
     }
 
     private Server getServer(String serverId) throws MojoExecutionException {
