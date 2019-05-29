@@ -11,10 +11,12 @@ public class FileHelperTest {
     public void testgetFilePathFromDependency() {
         Dependency dependency = setDependency("ncx-maven-bgav-plugin", "io.crowdcode", "0.2.2-SNAPSHOT");
         FileHelper fileHelper = new FileHelper( new Plugin().getLog());
-        assertEquals(fileHelper.getPOMFilePathFromDependency(dependency).toString(), System.getProperty("user.home") + "/.m2/repository/" +
+        final String actual = System.getProperty("user.home") + "/.m2/repository/" +
                 "io.crowdcode".replaceAll("[.]", "/") + "/" +
                 "ncx-maven-bgav-plugin" + "/" + dependency.getVersion() + "/" +
-                dependency.getArtifactId() + "-" + dependency.getVersion() + ".pom");
+                dependency.getArtifactId() + "-" + dependency.getVersion() + ".pom";
+        final String expected = fileHelper.getPOMFilePathFromDependency(dependency).toString();
+        assertEquals(expected.replace("\\","/"), actual.replace("\\","/"));
     }
 
     private Dependency setDependency(String artefactid, String groupid, String version) {
