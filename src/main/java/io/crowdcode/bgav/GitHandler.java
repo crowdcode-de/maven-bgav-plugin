@@ -19,6 +19,7 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -40,9 +41,9 @@ public class GitHandler {
 
     private final Log log;
 
-    public GitHandler() {
-        log = null;
-    }
+//    public GitHandler() {
+//        log = null;
+//    }
 
     public GitHandler(Log log) {
         this.log = log;
@@ -83,13 +84,13 @@ public class GitHandler {
     }
 
     /**
-     * check for Git Repository
+     * check for Git Repository on local file system
      *
      * @param model
      * @return Git
      * @throws MojoExecutionException
      */
-    public Git getGitRepo(Model model) throws MojoExecutionException {
+    public Git getGitLocalRepo(Model model) throws MojoExecutionException {
         Git git = null;
         try {
             git = Git.open(model.getProjectDirectory());
@@ -101,6 +102,30 @@ public class GitHandler {
         } catch (IOException ex) {
             throw new MojoExecutionException("could not read Git repo: " + ex);
         }
+        return git;
+    }
+
+    /**
+     * check for Git Repository from remote
+     *
+     * @param uri
+     * @return Git
+     * @throws MojoExecutionException
+     */
+    public Git cloneGitRemoteRepo(String uri, File localDirectory) throws MojoExecutionException {
+        log.info("Git clone " + uri + " to " + localDirectory);
+        Git git = null;
+        try {
+            CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
+            git = Git.cloneRepository().setCredentialsProvider(cp).setDirectory( localDirectory).setURI(uri).call();
+            log.info(git.toString());
+        } catch (GitAPIException ex) {
+            ex.printStackTrace();
+            throw new MojoExecutionException("could not get Git repo: " + ex);
+        }
+        // no Git Repo -> done.
+//        log.info("there is no Git repo ... done.");
+//        return git;
         return git;
     }
 
@@ -201,11 +226,27 @@ public class GitHandler {
         return branch;
     }
 
-    public void setGituser(String gituser) {
-        this.gituser = gituser;
-    }
-
-    public void setGitpassword(String gitpassword) {
-        this.gitpassword = gitpassword;
+    /**
+     * get Branches from remote Repository
+     *
+     * @param git
+     * @return String[] Branches
+     * @throws MojoExecutionException
+     */
+    public String[] getBranchesFromDependency(Git git) throws MojoExecutionException {
+        String[] branches;
+        try {
+//            Git git = cloneGitRemoteRepo(gitURL);
+            List<Ref> refs = git.branchList().setListMode(ListBranchCommand.ListMode.ALL).call();
+            branches = new String[refs.size() - 1];
+            for (int i = 0; i < refs.size() - 1; i++) {
+                branches[i] = refs.get(i).getName();
+                log.info("found branches: " + branches[i]);
+            }
+        } catch (Exception ex) {
+            log.error("cannot read branches from repositoty: " + ex);
+            throw new MojoExecutionException("cannot read branches from repositoty: " + ex);
+        }
+        return branches;
     }
 }

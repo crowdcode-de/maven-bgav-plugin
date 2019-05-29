@@ -114,7 +114,7 @@ public class Plugin extends AbstractMojo {
 
         // check for Git Repo -> @todo: autocloseable
         GitHandler gitHandler = new GitHandler(log, gituser, gitpassword);
-        Git git = gitHandler.getGitRepo(model);
+        Git git = gitHandler.getGitLocalRepo(model);
         if (git == null) {
             return;
         }
@@ -124,12 +124,12 @@ public class Plugin extends AbstractMojo {
         Repository repo = git.getRepository();
         String commitID = gitHandler.getCommitId(git);
         String branch = gitHandler.checkBranchName(repo, commitID, branchName);
+        String pomTicketId, ticketId = null;
         if (branch == null) {
             throw new MojoExecutionException("could not get Git branch");
         } else if (branch.startsWith("feature")) {
             // NCX-14 check for feature branch
             log.info("POM Version: " + model.getVersion());
-            String pomTicketId, ticketId;
             if (regex_ticket == null || regex_ticket.isEmpty()) {
                 log.info("RegEx for ticket ID is empty, use default one");
                 pomTicketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
@@ -151,7 +151,7 @@ public class Plugin extends AbstractMojo {
                 }
             } else if (ticketId.equals(pomTicketId)) {
                 // POM Version has TicketID
-                log.info("Git branch ticket ID matches POM ticket ID ... done.");
+                log.info("Git branch ticket ID matches POM ticket ID");
             } else {
                 // POM Version has TicketID
                 throw new MojoExecutionException("mismatch Git branch ticket ID and POM branch version ticket ID");
@@ -159,7 +159,14 @@ public class Plugin extends AbstractMojo {
         } else if (checkForAllowedBranch(branch)) {
             throw new MojoExecutionException("not allowed branch: " + branch);
         } else {
-            log.info("no Git feature branch ... done.");
+            log.info("no Git feature branch");
+        }
+        // NCX-36 check for affected GroupIds in dependencies
+        try {
+            mavenHandler.checkforDependencies(model, namespace, ticketId, gituser, gitpassword);
+
+        } catch (Exception ex) {
+            ex.printStackTrace();
         }
         git.close();
     }
@@ -203,5 +210,14 @@ public class Plugin extends AbstractMojo {
 
     public Log getLogs() {
         return log;
+    }
+
+    /**
+     * create GitHandler
+     *
+     * @return GitHandler
+     */
+    public GitHandler getXGitHandler() {
+        return new GitHandler(log, gituser, gitpassword);
     }
 }
