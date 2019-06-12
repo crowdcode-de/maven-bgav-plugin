@@ -19,7 +19,6 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
@@ -120,12 +119,8 @@ public class GitHandler {
             git = Git.cloneRepository().setCredentialsProvider(cp).setDirectory( localDirectory).setURI(uri).call();
             log.info(git.toString());
         } catch (GitAPIException ex) {
-            ex.printStackTrace();
             throw new MojoExecutionException("could not get Git repo: " + ex);
         }
-        // no Git Repo -> done.
-//        log.info("there is no Git repo ... done.");
-//        return git;
         return git;
     }
 
@@ -243,7 +238,7 @@ public class GitHandler {
                 branches[i] = refs.get(i).getName();
                 log.info("found branches: " + branches[i]);
             }
-        } catch (Exception ex) {
+        } catch (GitAPIException ex) {
             log.error("cannot read branches from repositoty: " + ex);
             throw new MojoExecutionException("cannot read branches from repositoty: " + ex);
         }
