@@ -149,7 +149,7 @@ public class Plugin extends AbstractMojo {
             if (pomTicketId == null) {
                 // NCX-16 write new verion to POM
                 new XMLHandler(log).writeChangedPomWithXPath(pomfile, ticketId);
-                gitHandler.commitAndPush(git, ticketId);
+                gitHandler.commitAndPush(git, ticketId + " - BGAV - set correkt branched version");
                 if (failOnMissingBranchId) {
                     // NCX-26
                     throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
@@ -168,7 +168,9 @@ public class Plugin extends AbstractMojo {
         }
         // NCX-36 check for affected GroupIds in dependencies
         try {
-            mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
+            if (mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository())) {
+                gitHandler.commitAndPush(git, ticketId + " - BGAV - set correkt branched version for " + mavenHandler.getArtefact());
+            }
         } catch (Exception ex) {
             throw new MojoExecutionException("could not check for dependencies: " + ex);
         }
