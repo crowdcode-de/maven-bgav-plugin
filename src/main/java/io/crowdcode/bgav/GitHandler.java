@@ -150,14 +150,14 @@ public class GitHandler {
      * Git POM commit and push
      *
      * @param git
-     * @param ticketID
+     * @param commitMessage
      * @throws MojoExecutionException
      */
-    void commitAndPush(Git git, String ticketID) throws MojoExecutionException {
+    void commitAndPush(Git git, String commitMessage) throws MojoExecutionException {
         try {
             CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
             git.add().addFilepattern("pom.xml").call();
-            git.commit().setMessage(ticketID + " - BGAV - set correkt branched version").call();
+            git.commit().setMessage(commitMessage).call();
             git.push().setCredentialsProvider(cp).call();
         } catch (GitAPIException ex) {
             log.error("GitAPIException: " + ex);

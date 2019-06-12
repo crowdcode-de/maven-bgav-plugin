@@ -21,6 +21,7 @@ import java.util.List;
 public class MavenHandler {
 
     private final Log log;
+    private String artefact;
 
     public MavenHandler() {
         log = null;
@@ -88,16 +89,16 @@ public class MavenHandler {
      * @param groupIds
      * @throws org.apache.maven.plugin.MojoExecutionException
      */
-    public void checkforDependencies(File pomfile, Model model, String[] groupIds, String ticketId, String gituser, String gitpassword, String localRepositoryPath) throws MojoExecutionException, Exception {
+    public Boolean checkforDependencies(File pomfile, Model model, String[] groupIds, String ticketId, String gituser, String gitpassword, String localRepositoryPath) throws MojoExecutionException, Exception {
         if (groupIds == null) {
             log.info("no group id(s) defined ... finished.");
-            return;
+            return false;
         }
         log.info("checking dependencies for affected group id(s)...");
         DeploymentRepository deploymentRepository = model.getDistributionManagement().getSnapshotRepository();
         log.info("using deployment repository: " + deploymentRepository + " with URL: " + deploymentRepository.getUrl());
         List<Dependency> dependencyListmodel = model.getDependencies();
-//        boolean dependencyHasToModified = false;
+        boolean dependencyHasToModified = false;
         for (Dependency dependency : dependencyListmodel) {
             for (String groupid : groupIds) {
                 if (dependency.getGroupId().contains(groupid)) {
@@ -105,7 +106,7 @@ public class MavenHandler {
                     // @todo: check if branched version of dep exists
                     // ->> get POM from dependency --> Git --> SCM --> getDatas
                     Model dependencyModel = getSCMfromPOM(dependency, localRepositoryPath);
-                    
+
                     // get Git Project URI
                     String dependencyScmUrl = dependencyModel.getScm().getUrl();
                     if (dependencyScmUrl == null || dependencyScmUrl.isEmpty()) {
@@ -119,14 +120,17 @@ public class MavenHandler {
                         if ( checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId)) {
                             //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
                             dependency.setVersion(setPomVersion(dependency.getVersion(), ticketId));
+                            artefact = dependency.getArtifactId();
                             log.info("changed dep: " + dependency);
                             log.info("POM FILE: " + model.getPomFile());
                             new XMLHandler(log).writeChangedPomWithChangedDependency(pomfile, dependency.getArtifactId(), ticketId);
+                            dependencyHasToModified = true;
                         }
                     }
                 }
             }
         }
+        return dependencyHasToModified;
     }
 
     /**
@@ -215,4 +219,14 @@ public class MavenHandler {
         }
         return settings;
     }
+
+    /**
+     * get artefact
+     *
+     * @return POM artefact
+     */
+    public String getArtefact() {
+        return artefact;
+    }
+
 }
