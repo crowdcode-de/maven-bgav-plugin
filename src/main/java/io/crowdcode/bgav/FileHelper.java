@@ -4,6 +4,7 @@ import org.apache.maven.model.Dependency;
 import org.apache.maven.plugin.logging.Log;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
@@ -66,8 +67,8 @@ public class FileHelper {
                     .sorted(Comparator.reverseOrder())
                     .map(Path::toFile)
                     .forEach(File::delete);
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (IOException ex) {
+            log.error("could not delete local checkout direcotory: " + ex.getLocalizedMessage());
         }
     }
 }
