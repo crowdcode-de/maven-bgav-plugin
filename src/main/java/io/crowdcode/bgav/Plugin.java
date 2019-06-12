@@ -7,6 +7,7 @@ import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
+import org.apache.maven.settings.Settings;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Repository;
 
@@ -77,6 +78,9 @@ public class Plugin extends AbstractMojo {
      */
     private final String REGEX_TICKET = "(\\p{Upper}{1,}-\\d{1,})";
 
+    @Parameter( defaultValue = "${settings}", readonly = true )
+    private Settings settings;
+
     /**
      * Maven plugin for adding ticket id to POM Version, if Git branch is
      * feature, bugfix or hotfix
@@ -93,6 +97,7 @@ public class Plugin extends AbstractMojo {
         log.info("Project " + model);
         log.info("failOnMissingBranchId: " + failOnMissingBranchId);
         log.info("branchName: " + branchName);
+        log.info("getLocalRepository: " + settings.getLocalRepository());
         if ((gituser == null || gituser.isEmpty()) || (gitpassword == null || gitpassword.isEmpty())) {
             log.info("no Git credentials set");
         } else {
@@ -163,10 +168,9 @@ public class Plugin extends AbstractMojo {
         }
         // NCX-36 check for affected GroupIds in dependencies
         try {
-            mavenHandler.checkforDependencies(model, namespace, ticketId, gituser, gitpassword);
-
+            mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
         } catch (Exception ex) {
-            ex.printStackTrace();
+            throw new MojoExecutionException("could not check for dependencies: " + ex);
         }
         git.close();
     }
@@ -210,14 +214,5 @@ public class Plugin extends AbstractMojo {
 
     public Log getLogs() {
         return log;
-    }
-
-    /**
-     * create GitHandler
-     *
-     * @return GitHandler
-     */
-    public GitHandler getXGitHandler() {
-        return new GitHandler(log, gituser, gitpassword);
     }
 }
