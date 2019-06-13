@@ -12,7 +12,10 @@ import org.apache.maven.shared.utils.ReaderFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.jgit.api.Git;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
 import java.util.List;
 
 /**
@@ -62,6 +65,9 @@ public class MavenHandler {
      */
     public String setPomVersion(String pomVersion, String ticketID) {
         String newPomVersion = "";
+        if (pomVersion.contains(ticketID)) {
+            return pomVersion;
+        }
         if (pomVersion.contains("-SNAPSHOT")) {
             newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-SNAPSHOT"));
             newPomVersion += "-" + ticketID + "-SNAPSHOT";
