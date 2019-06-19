@@ -49,12 +49,23 @@ public class PluginTest {
     @Test
     public void testCheckForAllowedBranch() {
         Plugin plugin = new Plugin();
-        assertTrue(plugin.checkForAllowedBranch("feature"));
-        assertTrue(plugin.checkForAllowedBranch("bugfix"));
-        assertTrue(plugin.checkForAllowedBranch("hotfix"));
-        assertFalse(plugin.checkForAllowedBranch("master"));
-        assertFalse(plugin.checkForAllowedBranch("develop"));
-        assertFalse(plugin.checkForAllowedBranch("release"));
+        assertTrue(plugin.checkForAllowedBgavBranch("feature"));
+        assertTrue(plugin.checkForAllowedBgavBranch("bugfix"));
+        assertTrue(plugin.checkForAllowedBgavBranch("hotfix"));
+        assertFalse(plugin.checkForAllowedBgavBranch("master"));
+        assertFalse(plugin.checkForAllowedBgavBranch("develop"));
+        assertFalse(plugin.checkForAllowedBgavBranch("release"));
+    }
+
+    @Test
+    public void testCheckForAllowedReleaseBranch() {
+        Plugin plugin = new Plugin();
+        assertFalse(plugin.checkForAllowedNonBgavBranch("feature"));
+        assertFalse(plugin.checkForAllowedNonBgavBranch("bugfix"));
+        assertFalse(plugin.checkForAllowedNonBgavBranch("hotfix"));
+        assertTrue(plugin.checkForAllowedNonBgavBranch("master"));
+        assertTrue(plugin.checkForAllowedNonBgavBranch("develop"));
+        assertTrue(plugin.checkForAllowedNonBgavBranch("release"));
     }
 
     @Test
