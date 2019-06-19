@@ -17,6 +17,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author andreas
@@ -125,12 +127,17 @@ public class MavenHandler {
                         log.info("Dependency SCM URL found: " + dependencyScmUrl);
                         if ( checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId)) {
                             //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
-                            dependency.setVersion(setPomVersion(dependency.getVersion(), ticketId));
-                            artefact = dependency.getArtifactId();
-                            log.info("changed dep: " + dependency);
-                            log.info("POM FILE: " + model.getPomFile());
-                            new XMLHandler(log).writeChangedPomWithChangedDependency(pomfile, dependency.getArtifactId(), ticketId);
-                            dependencyHasToModified = true;
+                            log.info("want to change: " + dependency.getVersion() + " -- " + ticketId);
+                            if (dependency.getVersion().contains(ticketId)) {
+                                log.info("POM contains ticketId - do nothing");
+                            } else {
+                                dependency.setVersion(setPomVersion(dependency.getVersion(), ticketId));
+                                artefact += dependency.getArtifactId() + ", ";
+                                log.info("changed dep: " + dependency);
+                                log.info("POM FILE: " + model.getPomFile());
+                                new XMLHandler(log).writeChangedPomWithChangedDependency(pomfile, dependency.getArtifactId(), ticketId);
+                                dependencyHasToModified = true;
+                            }
                         }
                     }
                 }
@@ -201,9 +208,7 @@ public class MavenHandler {
                 log.info("branch: " + branch + " - does not match our ticket " + ticketId);
             }
         }
-        if (checkForTicketId) {
-            log.info("changed branched version to: ");
-        } else {
+        if (!checkForTicketId) {
             log.info("there are no matches to our branched version - finished");
         }
         return checkForTicketId;
@@ -231,8 +236,10 @@ public class MavenHandler {
      *
      * @return POM artefact
      */
-    public String getArtefact() {
+    public String getArtefacts() {
+        if (artefact.endsWith(", ")) {
+            artefact = artefact.substring(0, artefact.length() - 2);
+        }
         return artefact;
     }
-
 }
