@@ -74,6 +74,7 @@ public class PluginTest {
         MavenHandler mavenHandler = new MavenHandler(plugin.getLog());
         assertEquals(mavenHandler.setPomVersion("1.0.1-SNAPSHOT", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
         assertEquals(mavenHandler.setPomVersion("1.0.1-SNAPSHOT", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
+        assertEquals(mavenHandler.setPomVersion("1.0.1-SNAPSHOT", "HSMRT-50"), "1.0.1-HSMRT-50-SNAPSHOT");
         assertEquals(mavenHandler.setPomVersion("1.0.1", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
         assertEquals(mavenHandler.setPomVersion("1.0.1", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
     }

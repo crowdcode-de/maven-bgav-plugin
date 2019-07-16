@@ -141,6 +141,41 @@ public class MavenHandler {
     }
 
     /**
+     * remove BGAV from dependencies
+     *
+     * @param pomfile
+     * @param model
+     * @param groupIds
+     * @return
+     */
+    public Boolean removeBgavFromPom(File pomfile, Model model, String[] groupIds) {
+        if (groupIds == null) {
+            log.info("no group id(s) defined ... finished.");
+            return false;
+        }
+        log.info("checking dependencies for affected group id(s)...");
+        List<Dependency> dependencyListmodel = model.getDependencies();
+        boolean dependencyHasModified = false;
+        for (Dependency dependency : dependencyListmodel) {
+            for (String groupid : groupIds) {
+                if (dependency.getGroupId().contains(groupid)) {
+                    log.info("affected dependency found: " + dependency + " with " + dependency.getVersion());
+                    // @todo: check if branched version of dep exists
+                    // ->> get POM from dependency --> Git --> SCM --> getDatas
+                    String ticketId = getMatchFirst(dependency.getVersion(), "(\\p{Upper}{1,}-\\d{1,})");
+                    log.info("dependency contains ticketId - remove it: " + getMatchFirst(dependency.getVersion(), "(\\p{Upper}{1,}-\\d{1,})"));
+                    if (!ticketId.isEmpty()) {
+                        dependency.setVersion(dependency.getVersion().replaceFirst(ticketId + "-", ""));
+                        dependencyHasModified = true;
+                        artefact += dependency.getArtifactId() + ", ";
+                    }
+                }
+            }
+        }
+        return dependencyHasModified;
+    }
+
+    /**
      * get local POM File to get POM-Model from Dependency
      *
      * <p>Get the local filepath to the POM file of Dependency </p>
@@ -235,5 +270,23 @@ public class MavenHandler {
             artefact = artefact.substring(0, artefact.length() - 2);
         }
         return artefact;
+    }
+
+    /**
+     * RegEx auf Branch
+     *
+     * @param search
+     * @param pat
+     * @return
+     */
+    String getMatchFirst(String search, String pat) {
+        String match = null;
+        Pattern pattern = Pattern.compile(pat);
+        Matcher matcher = pattern.matcher(search);
+        while (matcher.find()) {
+            match = matcher.group(1);
+//            log.info("Matcher: " + match);
+        }
+        return match;
     }
 }
