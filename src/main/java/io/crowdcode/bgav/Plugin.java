@@ -148,11 +148,11 @@ public class Plugin extends AbstractMojo {
             // NCX-14 check for feature branch
             log.info("POM Version: " + model.getVersion());
             if (regex_ticket == null || regex_ticket.isEmpty()) {
-                log.info("RegEx for ticket ID is empty, use default one");
+                log.info("RegEx for ticket ID is empty, use default one: " + REGEX_TICKET);
                 pomTicketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
                 ticketId = getMatchFirst(branch, REGEX_TICKET);
             } else {
-                log.info("use provided RegEx for ticket ID");
+                log.info("use provided RegEx for ticket ID: " + regex_ticket);
                 pomTicketId = getMatchFirst(model.getVersion(), regex_ticket);
                 ticketId = getMatchFirst(branch, regex_ticket);
             }
@@ -183,6 +183,15 @@ public class Plugin extends AbstractMojo {
             }
         } else if (checkForAllowedNonBgavBranch(branch)) {
             log.info("running non BGAV branch");
+            // remove BGAV from POM > dependencencies
+            try {
+                if (mavenHandler.removeBgavFromPom(pomfile, model, namespace)) {
+                    log.info("removed somethings from BGAV ....");
+                    gitHandler.commitAndPush(git, "removed BGAV from " + mavenHandler.getArtefacts());
+                }
+            } catch (MojoExecutionException ex) {
+                throw new MojoExecutionException("could not check for dependencies: " + ex);
+            }
         } else {
             log.info("no Git known branch");
             git.close();
@@ -201,13 +210,13 @@ public class Plugin extends AbstractMojo {
         String check = "";
         log.info("check for BGAV branch");
         if (regex_bgav_branch == null || regex_bgav_branch.isEmpty()) {
-            log.info("RegEx for BGAV branch is empty, use default one");
+            log.info("RegEx for BGAV branch is empty, use default one: " + REGEX_BGAV_BRANCH);
             check = getMatchFirst(branch, REGEX_BGAV_BRANCH);
-            return check == null ? false : !check.isEmpty();
+            return check != null && !check.isEmpty();
         } else {
-            log.info("use provided RegEx for BGAV branch");
+            log.info("use provided RegEx for BGAV branch: " + regex_bgav_branch);
             check = getMatchFirst(branch, regex_bgav_branch);
-            return check == null ? false : !check.isEmpty();
+            return check != null && !check.isEmpty();
         }
     }
 
@@ -221,13 +230,13 @@ public class Plugin extends AbstractMojo {
         String check = "";
         log.info("check for non BGAV branch");
         if (regex_not_bgav_branch == null || regex_not_bgav_branch.isEmpty()) {
-            log.info("RegEx for non BGAV branch is empty, use default one");
+            log.info("RegEx for non BGAV branch is empty, use default one: " + REGEX_NON_BGAV_BRANCH);
             check = getMatchFirst(branch, REGEX_NON_BGAV_BRANCH);
-            return check == null ? false : !check.isEmpty();
+            return check != null && !check.isEmpty();
         } else {
-            log.info("use provided RegEx for non BGAV branch");
+            log.info("use provided RegEx for non BGAV branch: " + regex_not_bgav_branch);
             check = getMatchFirst(branch, regex_not_bgav_branch);
-            return check == null ? false : !check.isEmpty();
+            return check != null && !check.isEmpty();
         }
     }
 
