@@ -161,7 +161,7 @@ public class Plugin extends AbstractMojo {
             if (pomTicketId == null) {
                 // NCX-16 write new verion to POM
                 new XMLHandler(log).writeChangedPomWithXPath(pomfile, ticketId);
-                gitHandler.commitAndPush(git, ticketId + " - BGAV - set correkt branched version");
+                gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version");
                 if (failOnMissingBranchId) {
                     // NCX-26
                     throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
@@ -176,18 +176,43 @@ public class Plugin extends AbstractMojo {
             // NCX-36 check for affected GroupIds in dependencies
             try {
                 if (mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository())) {
-                    gitHandler.commitAndPush(git, ticketId + " - BGAV - set correkt branched version for " + mavenHandler.getArtefacts());
+                    gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version for " + mavenHandler.getArtefacts());
                 }
             } catch (Exception ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
             }
         } else if (checkForAllowedNonBgavBranch(branch)) {
             log.info("running non BGAV branch");
-            // remove BGAV from POM > dependencencies
+            // remove BGAV from POM
+            log.info("POM Version: " + model.getVersion());
+            if (regex_ticket == null || regex_ticket.isEmpty()) {
+                log.info("RegEx for ticket ID is empty, use default one: " + REGEX_TICKET);
+                pomTicketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
+                ticketId = getMatchFirst(branch, REGEX_TICKET);
+            } else {
+                log.info("use provided RegEx for ticket ID: " + regex_ticket);
+                pomTicketId = getMatchFirst(model.getVersion(), regex_ticket);
+                ticketId = getMatchFirst(branch, regex_ticket);
+            }
+            log.info("POM ticketId: " + pomTicketId);
+            log.info("ticketId: " + ticketId);
+            if (pomTicketId.equals(ticketId)) {
+                new XMLHandler(log).writeChangedPomWithXPath(pomfile, model.getVersion().replaceFirst(ticketId + "-", ""));
+                gitHandler.commitAndPush(git, ticketId + " - none BGAV - set correct none branched version");
+                if (failOnMissingBranchId) {
+                    // NCX-26
+                    throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
+                }                
+            } else {
+                log.info("no BGAV information inside POM Version.");
+            }
+            // remove dependencies
             try {
                 if (mavenHandler.removeBgavFromPom(pomfile, model, namespace)) {
                     log.info("removed somethings from BGAV ....");
                     gitHandler.commitAndPush(git, "removed BGAV from " + mavenHandler.getArtefacts());
+                } else {
+                    log.info("none BGAV to have to removed");
                 }
             } catch (MojoExecutionException ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
