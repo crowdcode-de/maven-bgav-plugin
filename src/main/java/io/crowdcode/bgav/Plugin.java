@@ -196,7 +196,7 @@ public class Plugin extends AbstractMojo {
             }
             log.info("POM ticketId: " + pomTicketId);
             log.info("ticketId: " + ticketId);
-            if (pomTicketId.equals(ticketId)) {
+            if (!pomTicketId.equals(ticketId)) {
                 new XMLHandler(log).writeChangedPomWithXPath(pomfile, model.getVersion().replaceFirst(ticketId + "-", ""));
                 gitHandler.commitAndPush(git, ticketId + " - none BGAV - set correct none branched version");
                 if (failOnMissingBranchId) {
