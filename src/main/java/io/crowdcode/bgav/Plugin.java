@@ -196,11 +196,11 @@ public class Plugin extends AbstractMojo {
             }
             log.info("POM ticketId: " + pomTicketId);
             log.info("ticketId: " + ticketId);
-            if (!pomTicketId.equals(ticketId)) {
+            if (ticketId == null || !pomTicketId.equals(ticketId)) {
                 log.info("none BGAV - set correct none branched version");
                 new XMLHandler(log).writeChangedPomWithXPath(pomfile, model.getVersion().replaceFirst(pomTicketId + "-", ""));
-                gitHandler.commitAndPush(git, ticketId + " - none BGAV - set correct none branched version");
-                throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
+                gitHandler.commitAndPush(git, ticketId + " - none BGAV - set correct none branched version - build should fail?");
+//                throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
             } else {
                 log.info("no BGAV information inside POM Version.");
             }
