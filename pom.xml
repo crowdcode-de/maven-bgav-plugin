@@ -5,7 +5,7 @@
 
     <groupId>io.crowdcode</groupId>
     <artifactId>bgav-maven-plugin</artifactId>
-    <version>0.2.3</version>
+    <version>0.2.4-HSMRT-74-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
 
     <properties>
