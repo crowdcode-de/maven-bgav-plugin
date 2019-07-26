@@ -132,7 +132,7 @@ public class Plugin extends AbstractMojo {
         String pomTicketId, ticketId = null;
         if (branch == null) {
             throw new MojoExecutionException("could not get Git branch");
-        } else if (branch.startsWith("feature")) {
+        } else if (checkForAllowedBranch(branch)) {
             // NCX-14 check for feature branch
             log.info("POM Version: " + model.getVersion());
             if (regex_ticket == null || regex_ticket.isEmpty()) {
@@ -161,8 +161,6 @@ public class Plugin extends AbstractMojo {
                 // POM Version has TicketID
                 throw new MojoExecutionException("mismatch Git branch ticket ID and POM branch version ticket ID");
             }
-        } else if (checkForAllowedBranch(branch)) {
-            throw new MojoExecutionException("not allowed branch: " + branch);
         } else {
             log.info("no Git feature branch");
         }
