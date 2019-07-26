@@ -79,6 +79,12 @@ public class PluginTest {
         assertEquals(mavenHandler.setPomVersion("1.0.1", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
     }
 
+    public void testremovePomVerion() {
+        Plugin plugin = new Plugin();
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLog());
+        
+    }
+
     /*@Test
     public void testCheckBranch() throws MojoExecutionException {
         Plugin plugin = new Plugin();
