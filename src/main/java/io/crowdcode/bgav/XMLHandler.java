@@ -60,6 +60,31 @@ public class XMLHandler {
     }
 
     /**
+     * read end write POM with XPAth, due to an error in MavenXpp3Writer
+     *
+     * @param pomfile
+     * @param ticketID
+     * @throws MojoExecutionException
+     */
+    void writeNonBgavPomWithXPath(File pomfile, String pomVersion) throws MojoExecutionException {
+        try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {
+            DocumentBuilderFactory documentBuilderFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder documentBuilder = documentBuilderFactory.newDocumentBuilder();
+            Document document = documentBuilder.parse(fileInputStream);
+            XPath xPath = XPathFactory.newInstance().newXPath();
+            String expression = "/project/version";
+            NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
+            String oldPomVersion = nodeList.item(0).getTextContent();
+            nodeList.item(0).setTextContent(pomVersion);
+            Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            transformer.transform(new DOMSource(document), new StreamResult(pomfile));
+        } catch (Exception ex) {
+            log.error("IOException: " + ex);
+            throw new MojoExecutionException("could not write POM: " + ex);
+        }
+    }
+
+    /**
      * write changed POM file with new branched feature version
      *
      * @param pomfile
