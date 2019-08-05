@@ -110,9 +110,9 @@ public class Plugin extends AbstractMojo {
         log.info("branchName: " + branchName);
         log.info("getLocalRepository: " + settings.getLocalRepository());
         if ((gituser == null || gituser.isEmpty()) || (gitpassword == null || gitpassword.isEmpty())) {
-            log.info("no Git credentials set");
+            log.info("no Git credentials provided");
         } else {
-            log.info("Git credentials set");
+            log.info("Git credentials provided");
         }
 
         // 1. check for SNAPSHOT -> if not: abort
@@ -184,39 +184,35 @@ public class Plugin extends AbstractMojo {
         } else if (checkForAllowedNonBgavBranch(branch)) {
             log.info("running non BGAV branch");
             // remove BGAV from POM
-            log.info("POM Version: " + model.getVersion());
+            log.info("POM Version: " + model.getVersion()); 
             if (regex_ticket == null || regex_ticket.isEmpty()) {
                 log.info("RegEx for ticket ID is empty, use default one: " + REGEX_TICKET);
-                pomTicketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
-                ticketId = getMatchFirst(branch, REGEX_TICKET);
+                ticketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
             } else {
                 log.info("use provided RegEx for ticket ID: " + regex_ticket);
-                pomTicketId = getMatchFirst(model.getVersion(), regex_ticket);
-                ticketId = getMatchFirst(branch, regex_ticket);
+                ticketId = getMatchFirst(model.getVersion(), regex_ticket);
             }
-            log.info("POM ticketId: " + pomTicketId);
-            log.info("ticketId: " + ticketId);
-            if (!pomTicketId.equals(ticketId)) {
-                new XMLHandler(log).writeChangedPomWithXPath(pomfile, model.getVersion().replaceFirst(ticketId + "-", ""));
-                gitHandler.commitAndPush(git, ticketId + " - none BGAV - set correct none branched version");
-                if (failOnMissingBranchId) {
-                    // NCX-26
-                    throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
-                }                
+            log.info("branched version found: " + ticketId);
+            String nonBgavVersion = mavenHandler.setNonBgavPomVersion(model.getVersion());
+            if (!nonBgavVersion.equals(model.getVersion())) {
+                log.info("none BGAV - set correct none branched version to: " + nonBgavVersion);
+                new XMLHandler(log).writeNonBgavPomWithXPath(pomfile, nonBgavVersion);
+                gitHandler.commitAndPush(git, nonBgavVersion + " - none BGAV - set correct none branched version");
+                throw new MojoExecutionException("build failed due to new none branched version, new version pushed and committed.");
             } else {
                 log.info("no BGAV information inside POM Version.");
             }
-            // remove dependencies
-            try {
+            // remove non BGAV versions from dependencies
+            /*try {
                 if (mavenHandler.removeBgavFromPom(pomfile, model, namespace)) {
-                    log.info("removed somethings from BGAV ....");
+                    log.info("removed non BGAV versions from dependencies");
                     gitHandler.commitAndPush(git, "removed BGAV from " + mavenHandler.getArtefacts());
                 } else {
-                    log.info("none BGAV to have to removed");
+                    log.info("non BGAV dependencies have to removed");
                 }
             } catch (MojoExecutionException ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
-            }
+            }*/
         } else {
             log.info("no Git known branch");
             git.close();
