@@ -17,6 +17,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -186,15 +188,21 @@ public class MavenHandler {
                     // @todo: check if branched version of dep exists
                     // ->> get POM from dependency --> Git --> SCM --> getDatas
                     String ticketId = getMatchFirst(dependency.getVersion(), "(\\p{Upper}{1,}-\\d{1,})");
-                    log.info("dependency contains ticketId - remove it: " + getMatchFirst(dependency.getVersion(), "(\\p{Upper}{1,}-\\d{1,})"));
+                    log.info("dependency contains ticketId - remove it: " + ticketId);
                     if (!ticketId.isEmpty()) {
                         dependency.setVersion(dependency.getVersion().replaceFirst(ticketId + "-", ""));
                         dependencyHasModified = true;
                         artefact += dependency.getArtifactId() + ", ";
+                        try {
+                            new XMLHandler(log).writeChangedPomWithChangedDependency(pomfile, dependency.getArtifactId(), ticketId);
+                        } catch (MojoExecutionException ex) {
+                            log.warn("could not write POM");
+                        }
                     }
                 }
             }
         }
+        log.info("modified dependencies for affected group id(s): " + artefact);
         return dependencyHasModified;
     }
 
