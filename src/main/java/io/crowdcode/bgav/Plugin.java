@@ -202,17 +202,17 @@ public class Plugin extends AbstractMojo {
             } else {
                 log.info("no BGAV information inside POM Version.");
             }
-            // remove dependencies
-            /*try {
+            // remove non BGAV versions from dependencies
+            try {
                 if (mavenHandler.removeBgavFromPom(pomfile, model, namespace)) {
-                    log.info("removed somethings from BGAV ....");
+                    log.info("removed non BGAV versions from dependencies");
                     gitHandler.commitAndPush(git, "removed BGAV from " + mavenHandler.getArtefacts());
                 } else {
-                    log.info("none BGAV to have to removed");
+                    log.info("non BGAV dependencies have to removed");
                 }
             } catch (MojoExecutionException ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
-            }*/
+            }
         } else {
             log.info("no Git known branch");
             git.close();
