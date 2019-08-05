@@ -196,9 +196,8 @@ public class Plugin extends AbstractMojo {
             String nonBgavVersion = mavenHandler.setNonBgavPomVersion(model.getVersion());
             if (!nonBgavVersion.equals(model.getVersion())) {
                 log.info("none BGAV - set correct none branched version to: " + nonBgavVersion);
-                new XMLHandler(log).writeChangedPomWithXPath(pomfile, nonBgavVersion);
+                new XMLHandler(log).writeNonBgavPomWithXPath(pomfile, nonBgavVersion);
                 gitHandler.commitAndPush(git, nonBgavVersion + " - none BGAV - set correct none branched version");
-                log.info("none BGAV - set correct none branched version to: " + nonBgavVersion);
                 throw new MojoExecutionException("build failed due to new none branched version, new version pushed and committed.");
             } else {
                 log.info("no BGAV information inside POM Version.");
