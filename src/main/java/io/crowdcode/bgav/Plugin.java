@@ -184,7 +184,7 @@ public class Plugin extends AbstractMojo {
         } else if (checkForAllowedNonBgavBranch(branch)) {
             log.info("running non BGAV branch");
             // remove BGAV from POM
-            log.info("POM Version: " + model.getVersion());
+            log.info("POM Version: " + model.getVersion()); 
             if (regex_ticket == null || regex_ticket.isEmpty()) {
                 log.info("RegEx for ticket ID is empty, use default one: " + REGEX_TICKET);
                 ticketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
@@ -193,8 +193,9 @@ public class Plugin extends AbstractMojo {
                 ticketId = getMatchFirst(model.getVersion(), regex_ticket);
             }
             log.info("branched version found: " + ticketId);
-            if (ticketId != null) {
-                log.info("none BGAV - set correct none branched version to: " + model.getVersion().replaceFirst(ticketId + "-", ""));
+            String nonBgavVersion = mavenHandler.setNonBgavPomVersion(model.getVersion());
+            if (!nonBgavVersion.equals(model.getVersion())) {
+                log.info("none BGAV - set correct none branched version to: " + nonBgavVersion);
 //                new XMLHandler(log).writeChangedPomWithXPath(pomfile, model.getVersion().replaceFirst(ticketId + "-", ""));
 //                gitHandler.commitAndPush(git, ticketId + " - none BGAV - set correct none branched version");
 //                throw new MojoExecutionException("build failed due to new none branched version, new version pushed and committed.");

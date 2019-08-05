@@ -79,6 +79,23 @@ public class MavenHandler {
         log.info("new POM Version: " + newPomVersion);
         return newPomVersion;
     }
+    
+    public String setNonBgavPomVersion(String pomVersion) {
+        String newPomVersion = "";
+        log.info("non BGAV POM Version: " + pomVersion);
+        if (pomVersion.contains("-SNAPSHOT")) {
+            newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-"));
+            newPomVersion += "-SNAPSHOT";
+        } else {
+            if (pomVersion.indexOf("-") > 0) {
+                newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-"));
+            } else {
+                newPomVersion = pomVersion;
+            }
+        }
+        log.info("new non BGAV POM Version: " + newPomVersion);
+        return newPomVersion;
+    }
 
     /**
      * check Git for SNAPSHOT
