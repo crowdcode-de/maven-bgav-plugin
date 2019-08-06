@@ -203,7 +203,7 @@ public class Plugin extends AbstractMojo {
                 log.info("no BGAV information inside POM Version.");
             }
             // remove non BGAV versions from dependencies
-            /*try {
+            try {
                 if (mavenHandler.removeBgavFromPom(pomfile, model, namespace)) {
                     log.info("removed non BGAV versions from dependencies");
                     gitHandler.commitAndPush(git, "removed BGAV from " + mavenHandler.getArtefacts());
@@ -212,7 +212,7 @@ public class Plugin extends AbstractMojo {
                 }
             } catch (MojoExecutionException ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
-            }*/
+            }
         } else {
             log.info("no Git known branch");
             git.close();

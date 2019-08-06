@@ -190,11 +190,12 @@ public class MavenHandler {
                     String ticketId = getMatchFirst(dependency.getVersion(), "(\\p{Upper}{1,}-\\d{1,})");
                     log.info("dependency contains ticketId - remove it: " + ticketId);
                     if (!ticketId.isEmpty()) {
-                        dependency.setVersion(dependency.getVersion().replaceFirst(ticketId + "-", ""));
+                        String newPomDepVersion = dependency.getVersion().replaceFirst(ticketId + "-", "");
+                        dependency.setVersion(newPomDepVersion);
                         dependencyHasModified = true;
                         artefact += dependency.getArtifactId() + ", ";
                         try {
-                            new XMLHandler(log).writeChangedPomWithChangedDependency(pomfile, dependency.getArtifactId(), ticketId);
+                            new XMLHandler(log).writeChangedNonBgavPomWithChangedDependency(pomfile, dependency.getArtifactId());
                         } catch (MojoExecutionException ex) {
                             log.warn("could not write POM");
                         }
