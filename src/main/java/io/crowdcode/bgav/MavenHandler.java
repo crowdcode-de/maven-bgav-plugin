@@ -113,17 +113,16 @@ public class MavenHandler {
      * @param groupIds
      * @throws org.apache.maven.plugin.MojoExecutionException
      */
-    public Boolean checkforDependencies(File pomfile, Model model, String[] groupIds, String ticketId, String gituser, String gitpassword, String localRepositoryPath) throws MojoExecutionException, Exception {
+    public String checkforDependencies(File pomfile, Model model, String[] groupIds, String ticketId, String gituser, String gitpassword, String localRepositoryPath) throws MojoExecutionException, Exception {
         if (groupIds == null) {
             log.info("no group id(s) defined ... finished.");
-            return false;
+            return "";
         }
         log.info("checking dependencies for affected group id(s)...");
         DeploymentRepository deploymentRepository = model.getDistributionManagement().getSnapshotRepository();
         log.info("using deployment repository: " + deploymentRepository + " with URL: " + deploymentRepository.getUrl());
         List<Dependency> dependencyListmodel = model.getDependencies();
         String artefact = "";
-        boolean dependencyHasToModified = false;
         for (Dependency dependency : dependencyListmodel) {
             for (String groupid : groupIds) {
                 if (dependency.getGroupId().contains(groupid)) {
@@ -153,14 +152,13 @@ public class MavenHandler {
                                 log.info("changed dep: " + dependency);
                                 log.info("POM FILE: " + model.getPomFile());
                                 new XMLHandler(log).writeChangedPomWithChangedDependency(pomfile, dependency.getArtifactId(), ticketId);
-                                dependencyHasToModified = true;
                             }
                         }
                     }
                 }
             }
         }
-        return dependencyHasToModified;
+        return artefact;
     }
 
     /**

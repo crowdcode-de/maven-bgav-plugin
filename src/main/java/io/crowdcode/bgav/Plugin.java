@@ -175,8 +175,9 @@ public class Plugin extends AbstractMojo {
             }
             // NCX-36 check for affected GroupIds in dependencies
             try {
-                if (mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository())) {
-                    gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version for " + mavenHandler.getArtefacts());
+                String artefacts = mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
+                if (!artefacts.isEmpty()) {
+                    gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version for " + artefacts);
                 }
             } catch (Exception ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
