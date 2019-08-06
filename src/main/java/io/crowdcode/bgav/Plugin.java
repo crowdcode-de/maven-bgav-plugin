@@ -204,9 +204,10 @@ public class Plugin extends AbstractMojo {
             }
             // remove non BGAV versions from dependencies
             try {
-                if (mavenHandler.removeBgavFromPom(pomfile, model, namespace)) {
+                String artefacts = mavenHandler.removeBgavFromPom(pomfile, model, namespace);
+                if (!artefacts.isEmpty()) {
                     log.info("removed non BGAV versions from dependencies");
-                    gitHandler.commitAndPush(git, "removed BGAV from " + mavenHandler.getArtefacts());
+                    gitHandler.commitAndPush(git, "removed BGAV from " + (artefacts.endsWith(", ") ? artefacts.substring(0, artefacts.length() - 2) : artefacts));
                 } else {
                     log.info("non BGAV dependencies have to removed");
                 }

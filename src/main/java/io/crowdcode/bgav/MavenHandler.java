@@ -17,8 +17,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -28,7 +26,6 @@ import java.util.regex.Pattern;
 public class MavenHandler {
 
     private final Log log;
-    private String artefact;
 
     public MavenHandler() {
         log = null;
@@ -125,6 +122,7 @@ public class MavenHandler {
         DeploymentRepository deploymentRepository = model.getDistributionManagement().getSnapshotRepository();
         log.info("using deployment repository: " + deploymentRepository + " with URL: " + deploymentRepository.getUrl());
         List<Dependency> dependencyListmodel = model.getDependencies();
+        String artefact = "";
         boolean dependencyHasToModified = false;
         for (Dependency dependency : dependencyListmodel) {
             for (String groupid : groupIds) {
@@ -173,14 +171,14 @@ public class MavenHandler {
      * @param groupIds
      * @return
      */
-    public Boolean removeBgavFromPom(File pomfile, Model model, String[] groupIds) {
+    public String removeBgavFromPom(File pomfile, Model model, String[] groupIds) {
         if (groupIds == null) {
             log.info("no group id(s) defined ... finished.");
-            return false;
+            return "";
         }
         log.info("checking dependencies for affected group id(s)...");
+        String artefact = "";
         List<Dependency> dependencyListmodel = model.getDependencies();
-        boolean dependencyHasModified = false;
         for (Dependency dependency : dependencyListmodel) {
             for (String groupid : groupIds) {
                 if (dependency.getGroupId().contains(groupid)) {
@@ -188,23 +186,23 @@ public class MavenHandler {
                     // @todo: check if branched version of dep exists
                     // ->> get POM from dependency --> Git --> SCM --> getDatas
                     String ticketId = getMatchFirst(dependency.getVersion(), "(\\p{Upper}{1,}-\\d{1,})");
-                    log.info("dependency contains ticketId - remove it: " + ticketId);
-                    if (!ticketId.isEmpty()) {
+                    if (ticketId != null && !ticketId.isEmpty()) {
+                        log.info("dependency contains ticketId - remove it: " + ticketId);
                         String newPomDepVersion = dependency.getVersion().replaceFirst(ticketId + "-", "");
                         dependency.setVersion(newPomDepVersion);
-                        dependencyHasModified = true;
                         artefact += dependency.getArtifactId() + ", ";
                         try {
                             new XMLHandler(log).writeChangedNonBgavPomWithChangedDependency(pomfile, dependency.getArtifactId());
                         } catch (MojoExecutionException ex) {
                             log.warn("could not write POM");
                         }
+                    } else {
+                        log.info("dependency has no BGAV version");
                     }
                 }
             }
         }
-        log.info("modified dependencies for affected group id(s): " + artefact);
-        return dependencyHasModified;
+        return artefact;
     }
 
     /**
@@ -290,18 +288,6 @@ public class MavenHandler {
             log.error("could not read .m2/settings.xml: " + ex);
         }
         return settings;
-    }
-
-    /**
-     * get artefact
-     *
-     * @return POM artefact
-     */
-    public String getArtefacts() {
-        if (artefact.endsWith(", ")) {
-            artefact = artefact.substring(0, artefact.length() - 2);
-        }
-        return artefact;
     }
 
     /**
