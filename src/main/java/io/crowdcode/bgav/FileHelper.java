@@ -12,7 +12,7 @@ import java.util.Comparator;
 public class FileHelper {
 
     private final Log log;
-    private final String TEMP_DIR = System.getProperty("java.io.tmpdir");
+    private final String TEMP_DIR = System.getProperty("java.io.tmpdir") + "/";
     private File localDirectory;
 
     public FileHelper() {
