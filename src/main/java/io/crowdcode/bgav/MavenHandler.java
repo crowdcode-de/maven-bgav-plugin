@@ -129,7 +129,13 @@ public class MavenHandler {
                     log.info("affected dependency found: " + dependency + " with " + dependency.getVersion());
                     // @todo: check if branched version of dep exists
                     // ->> get POM from dependency --> Git --> SCM --> getDatas
-                    Model dependencyModel = getSCMfromPOM(dependency, localRepositoryPath);
+                    Model dependencyModel = null;
+                    try {
+                        dependencyModel = getSCMfromPOM(dependency, localRepositoryPath);
+                    } catch (MojoExecutionException e) {
+                        log.warn("could not get POM file: " + e);
+                        return artefact;
+                    }
                     // --> get POM from SCM from project POM file
                     // get Git Project URI
                     String dependencyScmUrl = dependencyModel.getScm().getUrl();
