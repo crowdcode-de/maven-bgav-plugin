@@ -66,7 +66,9 @@ public class MavenHandler {
      */
     public String setPomVersion(String pomVersion, String ticketID) {
         // check is dependency has wrong ticketId
-        if (!getMatchFirst(pomVersion, "(\\p{Upper}{1,}-\\d{1,})").isEmpty()) { 
+        String ticketId = getMatchFirst(pomVersion, "(\\p{Upper}{1,}-\\d{1,})");
+        log.info("found ticketId in dependency: " + ticketId);
+        if (ticketId != null && !ticketId.isEmpty()) { 
             pomVersion = setNonBgavPomVersion(pomVersion);
             log.info("removed wrong ticketId from POM Version: " + pomVersion);
         }
@@ -161,7 +163,7 @@ public class MavenHandler {
                                 dependency.setVersion(setPomVersion(dependency.getVersion(), ticketId));
                                 artefact += dependency.getArtifactId() + ", ";
                                 log.info("changed dep: " + dependency);
-                                log.info("POM FILE: " + model.getPomFile());
+//                                log.info("POM FILE: " + model.getPomFile());
                                 new XMLHandler(log).writeChangedPomWithChangedDependency(pomfile, dependency.getArtifactId(), ticketId);
                             }
                         }
