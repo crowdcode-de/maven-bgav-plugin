@@ -179,7 +179,7 @@ public class Plugin extends AbstractMojo {
             try {
                 String artefacts = mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
                 if (!artefacts.isEmpty()) {
-                    gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version for " + artefacts);
+                    gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version for " + (artefacts.endsWith(", ") ? artefacts.substring(0, artefacts.length() - 2) : artefacts));
                 }
             } catch (Exception ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
