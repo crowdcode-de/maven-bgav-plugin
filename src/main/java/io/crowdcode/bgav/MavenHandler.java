@@ -91,7 +91,7 @@ public class MavenHandler {
         log.info("non BGAV POM Version: " + pomVersion);
         if (pomVersion.contains("-SNAPSHOT")) {
             newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-"));
-            newPomVersion += "-SNAPSHOT";
+//            newPomVersion += "-SNAPSHOT";
         } else {
             if (pomVersion.indexOf("-") > 0) {
                 newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-"));
