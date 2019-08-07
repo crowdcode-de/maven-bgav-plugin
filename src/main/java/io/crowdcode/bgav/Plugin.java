@@ -165,6 +165,8 @@ public class Plugin extends AbstractMojo {
                 if (failOnMissingBranchId) {
                     // NCX-26
                     throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
+                } else {
+                    log.info("failOnMissingBranchId parameter is not set");
                 }
             } else if (ticketId.equals(pomTicketId)) {
                 // POM Version has TicketID
