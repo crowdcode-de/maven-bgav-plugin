@@ -65,6 +65,11 @@ public class MavenHandler {
      * @return new POM Version
      */
     public String setPomVersion(String pomVersion, String ticketID) {
+        // check is dependency has wrong ticketId
+        if (!getMatchFirst(pomVersion, "(\\p{Upper}{1,}-\\d{1,})").isEmpty()) { 
+            pomVersion = setNonBgavPomVersion(pomVersion);
+            log.info("removed wrong ticketId from POM Version: " + pomVersion);
+        }
         String newPomVersion = "";
         if (pomVersion.contains(ticketID)) {
             return pomVersion;
