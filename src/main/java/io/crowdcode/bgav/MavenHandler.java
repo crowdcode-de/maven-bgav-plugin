@@ -259,7 +259,7 @@ public class MavenHandler {
      * @param ticketId
      * @return checkForTicketId
      */
-    private Boolean check(String[] branches, String ticketId) {
+    private Boolean check(String[] branches, String ticketId) throws MojoExecutionException {
         // check for affected groudids
         Boolean checkForTicketId = false;
         for (String branch : branches) {
@@ -272,7 +272,8 @@ public class MavenHandler {
             }
         }
         if (!checkForTicketId) {
-            log.info("there are no matches to our branched version - finished");
+//            log.info("there are no matches to our branched version - finished");
+            throw new MojoExecutionException("there are no matches to our branched version");
         }
         return checkForTicketId;
     }
