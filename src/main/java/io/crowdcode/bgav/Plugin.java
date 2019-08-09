@@ -116,9 +116,10 @@ public class Plugin extends AbstractMojo {
         }
 
         // 1. check for SNAPSHOT -> if not: abort
-        if (!mavenHandler.checkForSnapshot(model)) {
-            throw new MojoExecutionException("project is not a SNAPSHOT");
-        }
+        // 2019-08-09 makes no sense anymore, on BGAV -SNAPSHOT will be added, on non BGAV -SNAPSHOT will removed
+//        if (!mavenHandler.checkForSnapshot(model)) {
+//            throw new MojoExecutionException("project is not a SNAPSHOT");
+//        }
         // (POM) {Version}-SNAPSHOT
         // (POM) {Version}-{TicketID}-SNAPSHOT
         // 2. check for branch: MUST NOT be develop or master or release
