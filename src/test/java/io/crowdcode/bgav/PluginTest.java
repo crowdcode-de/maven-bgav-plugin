@@ -83,11 +83,11 @@ public class PluginTest {
     public void testRemovePomVerion() {
         Plugin plugin = new Plugin();
         MavenHandler mavenHandler = new MavenHandler(plugin.getLog());
-        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-NCX-11-SNAPSHOT"), "1.0.1");
-        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-HSMRT-50-SNAPSHOT"), "1.0.1");
+        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-NCX-11-SNAPSHOT"), "1.0.1-SNAPSHOT");
+        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-HSMRT-50-SNAPSHOT"), "1.0.1-SNAPSHOT");
         assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-NCX-11"), "1.0.1");
         assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1"), "1.0.1");
-        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-SNAPSHOT"), "1.0.1");
+        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-SNAPSHOT"), "1.0.1-SNAPSHOT");
 //        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-RELEASE"), "1.0.1-RELEASE");
     }
 
