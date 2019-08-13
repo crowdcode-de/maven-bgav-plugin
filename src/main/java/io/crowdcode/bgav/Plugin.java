@@ -116,9 +116,10 @@ public class Plugin extends AbstractMojo {
         }
 
         // 1. check for SNAPSHOT -> if not: abort
-        if (!mavenHandler.checkForSnapshot(model)) {
-            throw new MojoExecutionException("project is not a SNAPSHOT");
-        }
+        // 2019-08-09 makes no sense anymore, on BGAV -SNAPSHOT will be added, on non BGAV -SNAPSHOT will removed
+//        if (!mavenHandler.checkForSnapshot(model)) {
+//            throw new MojoExecutionException("project is not a SNAPSHOT");
+//        }
         // (POM) {Version}-SNAPSHOT
         // (POM) {Version}-{TicketID}-SNAPSHOT
         // 2. check for branch: MUST NOT be develop or master or release
@@ -165,6 +166,8 @@ public class Plugin extends AbstractMojo {
                 if (failOnMissingBranchId) {
                     // NCX-26
                     throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
+                } else {
+                    log.info("failOnMissingBranchId parameter is not set");
                 }
             } else if (ticketId.equals(pomTicketId)) {
                 // POM Version has TicketID
@@ -175,8 +178,9 @@ public class Plugin extends AbstractMojo {
             }
             // NCX-36 check for affected GroupIds in dependencies
             try {
-                if (mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository())) {
-                    gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version for " + mavenHandler.getArtefacts());
+                String artefacts = mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
+                if (!artefacts.isEmpty()) {
+                    gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version for " + (artefacts.endsWith(", ") ? artefacts.substring(0, artefacts.length() - 2) : artefacts));
                 }
             } catch (Exception ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
@@ -203,16 +207,17 @@ public class Plugin extends AbstractMojo {
                 log.info("no BGAV information inside POM Version.");
             }
             // remove non BGAV versions from dependencies
-            /*try {
-                if (mavenHandler.removeBgavFromPom(pomfile, model, namespace)) {
+            try {
+                String artefacts = mavenHandler.removeBgavFromPom(pomfile, model, namespace);
+                if (!artefacts.isEmpty()) {
                     log.info("removed non BGAV versions from dependencies");
-                    gitHandler.commitAndPush(git, "removed BGAV from " + mavenHandler.getArtefacts());
+                    gitHandler.commitAndPush(git, "removed BGAV from " + (artefacts.endsWith(", ") ? artefacts.substring(0, artefacts.length() - 2) : artefacts));
                 } else {
                     log.info("non BGAV dependencies have to removed");
                 }
             } catch (MojoExecutionException ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
-            }*/
+            }
         } else {
             log.info("no Git known branch");
             git.close();
