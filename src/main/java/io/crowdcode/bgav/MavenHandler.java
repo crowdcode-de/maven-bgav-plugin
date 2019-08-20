@@ -12,8 +12,13 @@ import org.apache.maven.shared.utils.ReaderFactory;
 import org.codehaus.plexus.util.xml.pull.XmlPullParserException;
 import org.eclipse.jgit.api.Git;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.Reader;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @author andreas
@@ -21,7 +26,6 @@ import java.util.List;
 public class MavenHandler {
 
     private final Log log;
-    private String artefact;
 
     public MavenHandler() {
         log = null;
@@ -61,7 +65,17 @@ public class MavenHandler {
      * @return new POM Version
      */
     public String setPomVersion(String pomVersion, String ticketID) {
+        // check is dependency has wrong ticketId
+        String ticketId = getMatchFirst(pomVersion, "(\\p{Upper}{1,}-\\d{1,})");
+        log.info("found ticketId in dependency: " + ticketId);
+        if (ticketId != null && !ticketId.isEmpty()) { 
+            pomVersion = setNonBgavPomVersion(pomVersion);
+            log.info("removed wrong ticketId from POM Version: " + pomVersion);
+        }
         String newPomVersion = "";
+        if (pomVersion.contains(ticketID)) {
+            return pomVersion;
+        }
         if (pomVersion.contains("-SNAPSHOT")) {
             newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-SNAPSHOT"));
             newPomVersion += "-" + ticketID + "-SNAPSHOT";
@@ -69,6 +83,23 @@ public class MavenHandler {
             newPomVersion = pomVersion + "-" + ticketID + "-SNAPSHOT";
         }
         log.info("new POM Version: " + newPomVersion);
+        return newPomVersion;
+    }
+    
+    public String setNonBgavPomVersion(String pomVersion) {
+        String newPomVersion = "";
+        log.info("non BGAV POM Version: " + pomVersion);
+        if (pomVersion.contains("-SNAPSHOT")) {
+            newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-"));
+            newPomVersion += "-SNAPSHOT";
+        } else {
+            if (pomVersion.indexOf("-") > 0) {
+                newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-"));
+            } else {
+                newPomVersion = pomVersion;
+            }
+        }
+        log.info("new non BGAV POM Version: " + newPomVersion);
         return newPomVersion;
     }
 
@@ -89,24 +120,30 @@ public class MavenHandler {
      * @param groupIds
      * @throws org.apache.maven.plugin.MojoExecutionException
      */
-    public Boolean checkforDependencies(File pomfile, Model model, String[] groupIds, String ticketId, String gituser, String gitpassword, String localRepositoryPath) throws MojoExecutionException, Exception {
+    public String checkforDependencies(File pomfile, Model model, String[] groupIds, String ticketId, String gituser, String gitpassword, String localRepositoryPath) throws MojoExecutionException, Exception {
         if (groupIds == null) {
             log.info("no group id(s) defined ... finished.");
-            return false;
+            return "";
         }
         log.info("checking dependencies for affected group id(s)...");
         DeploymentRepository deploymentRepository = model.getDistributionManagement().getSnapshotRepository();
         log.info("using deployment repository: " + deploymentRepository + " with URL: " + deploymentRepository.getUrl());
         List<Dependency> dependencyListmodel = model.getDependencies();
-        boolean dependencyHasToModified = false;
+        String artefact = "";
         for (Dependency dependency : dependencyListmodel) {
             for (String groupid : groupIds) {
                 if (dependency.getGroupId().contains(groupid)) {
                     log.info("affected dependency found: " + dependency + " with " + dependency.getVersion());
                     // @todo: check if branched version of dep exists
                     // ->> get POM from dependency --> Git --> SCM --> getDatas
-                    Model dependencyModel = getSCMfromPOM(dependency, localRepositoryPath);
-
+                    Model dependencyModel = null;
+                    try {
+                        dependencyModel = getSCMfromPOM(dependency, localRepositoryPath);
+                    } catch (MojoExecutionException e) {
+                        log.warn("could not get POM file: " + e);
+                        return artefact;
+                    }
+                    // --> get POM from SCM from project POM file
                     // get Git Project URI
                     String dependencyScmUrl = dependencyModel.getScm().getUrl();
                     if (dependencyScmUrl == null || dependencyScmUrl.isEmpty()) {
@@ -119,18 +156,64 @@ public class MavenHandler {
                         log.info("Dependency SCM URL found: " + dependencyScmUrl);
                         if ( checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId)) {
                             //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
-                            dependency.setVersion(setPomVersion(dependency.getVersion(), ticketId));
-                            artefact = dependency.getArtifactId();
-                            log.info("changed dep: " + dependency);
-                            log.info("POM FILE: " + model.getPomFile());
-                            new XMLHandler(log).writeChangedPomWithChangedDependency(pomfile, dependency.getArtifactId(), ticketId);
-                            dependencyHasToModified = true;
+                            log.info("want to change: " + dependency.getVersion() + " -- " + ticketId);
+                            if (dependency.getVersion().contains(ticketId)) {
+                                log.info("POM contains ticketId - do nothing");
+                            } else {
+                                dependency.setVersion(setPomVersion(dependency.getVersion(), ticketId));
+                                artefact += dependency.getArtifactId() + ", ";
+                                log.info("changed dep: " + dependency);
+//                                log.info("POM FILE: " + model.getPomFile());
+                                new XMLHandler(log).writeChangedPomWithChangedDependency(pomfile, dependency.getArtifactId(), ticketId);
+                            }
                         }
                     }
                 }
             }
         }
-        return dependencyHasToModified;
+        return artefact;
+    }
+
+    /**
+     * remove BGAV from dependencies
+     *
+     * @param pomfile
+     * @param model
+     * @param groupIds
+     * @return
+     */
+    public String removeBgavFromPom(File pomfile, Model model, String[] groupIds) {
+        if (groupIds == null) {
+            log.info("no group id(s) defined ... finished.");
+            return "";
+        }
+        log.info("checking dependencies for affected group id(s)...");
+        String artefact = "";
+        List<Dependency> dependencyListmodel = model.getDependencies();
+        for (Dependency dependency : dependencyListmodel) {
+            for (String groupid : groupIds) {
+                if (dependency.getGroupId().contains(groupid)) {
+                    log.info("affected dependency found: " + dependency + " with " + dependency.getVersion());
+                    // @todo: check if branched version of dep exists
+                    // ->> get POM from dependency --> Git --> SCM --> getDatas
+                    String ticketId = getMatchFirst(dependency.getVersion(), "(\\p{Upper}{1,}-\\d{1,})");
+                    if (ticketId != null && !ticketId.isEmpty()) {
+                        log.info("dependency contains ticketId - remove it: " + ticketId);
+                        String newPomDepVersion = dependency.getVersion().replaceFirst(ticketId + "-", "");
+                        dependency.setVersion(newPomDepVersion);
+                        artefact += dependency.getArtifactId() + ", ";
+                        try {
+                            new XMLHandler(log).writeChangedNonBgavPomWithChangedDependency(pomfile, dependency.getArtifactId());
+                        } catch (MojoExecutionException ex) {
+                            log.warn("could not write POM");
+                        }
+                    } else {
+                        log.info("dependency has no BGAV version");
+                    }
+                }
+            }
+        }
+        return artefact;
     }
 
     /**
@@ -183,7 +266,7 @@ public class MavenHandler {
      * @param ticketId
      * @return checkForTicketId
      */
-    private Boolean check(String[] branches, String ticketId) {
+    private Boolean check(String[] branches, String ticketId) throws MojoExecutionException {
         // check for affected groudids
         Boolean checkForTicketId = false;
         for (String branch : branches) {
@@ -195,10 +278,9 @@ public class MavenHandler {
                 log.info("branch: " + branch + " - does not match our ticket " + ticketId);
             }
         }
-        if (checkForTicketId) {
-            log.info("changed branched version to: ");
-        } else {
-            log.info("there are no matches to our branched version - finished");
+        if (!checkForTicketId) {
+//            log.info("there are no matches to our branched version - finished");
+            throw new MojoExecutionException("there are no matches to our branched version");
         }
         return checkForTicketId;
     }
@@ -221,12 +303,20 @@ public class MavenHandler {
     }
 
     /**
-     * get artefact
+     * RegEx auf Branch
      *
-     * @return POM artefact
+     * @param search
+     * @param pat
+     * @return
      */
-    public String getArtefact() {
-        return artefact;
+    String getMatchFirst(String search, String pat) {
+        String match = null;
+        Pattern pattern = Pattern.compile(pat);
+        Matcher matcher = pattern.matcher(search);
+        while (matcher.find()) {
+            match = matcher.group(1);
+//            log.info("Matcher: " + match);
+        }
+        return match;
     }
-
 }

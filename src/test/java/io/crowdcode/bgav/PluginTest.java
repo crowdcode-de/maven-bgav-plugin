@@ -49,12 +49,23 @@ public class PluginTest {
     @Test
     public void testCheckForAllowedBranch() {
         Plugin plugin = new Plugin();
-        assertTrue(plugin.checkForAllowedBranch("feature"));
-        assertTrue(plugin.checkForAllowedBranch("bugfix"));
-        assertTrue(plugin.checkForAllowedBranch("hotfix"));
-        assertFalse(plugin.checkForAllowedBranch("master"));
-        assertFalse(plugin.checkForAllowedBranch("develop"));
-        assertFalse(plugin.checkForAllowedBranch("release"));
+        assertTrue(plugin.checkForAllowedBgavBranch("feature"));
+        assertTrue(plugin.checkForAllowedBgavBranch("bugfix"));
+        assertTrue(plugin.checkForAllowedBgavBranch("hotfix"));
+        assertFalse(plugin.checkForAllowedBgavBranch("master"));
+        assertFalse(plugin.checkForAllowedBgavBranch("develop"));
+        assertFalse(plugin.checkForAllowedBgavBranch("release"));
+    }
+
+    @Test
+    public void testCheckForAllowedReleaseBranch() {
+        Plugin plugin = new Plugin();
+        assertFalse(plugin.checkForAllowedNonBgavBranch("feature"));
+        assertFalse(plugin.checkForAllowedNonBgavBranch("bugfix"));
+        assertFalse(plugin.checkForAllowedNonBgavBranch("hotfix"));
+        assertTrue(plugin.checkForAllowedNonBgavBranch("master"));
+        assertTrue(plugin.checkForAllowedNonBgavBranch("develop"));
+        assertTrue(plugin.checkForAllowedNonBgavBranch("release"));
     }
 
     @Test
@@ -63,8 +74,21 @@ public class PluginTest {
         MavenHandler mavenHandler = new MavenHandler(plugin.getLog());
         assertEquals(mavenHandler.setPomVersion("1.0.1-SNAPSHOT", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
         assertEquals(mavenHandler.setPomVersion("1.0.1-SNAPSHOT", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
+        assertEquals(mavenHandler.setPomVersion("1.0.1-SNAPSHOT", "HSMRT-50"), "1.0.1-HSMRT-50-SNAPSHOT");
         assertEquals(mavenHandler.setPomVersion("1.0.1", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
         assertEquals(mavenHandler.setPomVersion("1.0.1", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
+    }
+
+    @Test
+    public void testRemovePomVerion() {
+        Plugin plugin = new Plugin();
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLog());
+        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-NCX-11-SNAPSHOT"), "1.0.1-SNAPSHOT");
+        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-HSMRT-50-SNAPSHOT"), "1.0.1-SNAPSHOT");
+        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-NCX-11"), "1.0.1");
+        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1"), "1.0.1");
+        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-SNAPSHOT"), "1.0.1-SNAPSHOT");
+//        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-RELEASE"), "1.0.1-RELEASE");
     }
 
     /*@Test
