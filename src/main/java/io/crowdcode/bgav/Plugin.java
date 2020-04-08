@@ -142,23 +142,25 @@ public class Plugin extends AbstractMojo {
         String commitID = gitHandler.getCommitId(git);
         String branch = gitHandler.checkBranchName(repo, commitID, branchName);
         String pomTicketId, ticketId = null;
+
+
         if (branch == null) {
             throw new MojoExecutionException("could not get Git branch");
         } else if (checkForAllowedBgavBranch(branch)) {
-            log.info("running BGAV branch");
+            log.debug("running BGAV branch");
             // NCX-14 check for feature branch
-            log.info("POM Version: " + model.getVersion());
+            log.debug("POM Version: " + model.getVersion());
             if (regex_ticket == null || regex_ticket.isEmpty()) {
                 log.info("RegEx for ticket ID is empty, use default one: " + REGEX_TICKET);
                 pomTicketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
                 ticketId = getMatchFirst(branch, REGEX_TICKET);
             } else {
-                log.info("use provided RegEx for ticket ID: " + regex_ticket);
+                log.debug("use provided RegEx for ticket ID: " + regex_ticket);
                 pomTicketId = getMatchFirst(model.getVersion(), regex_ticket);
                 ticketId = getMatchFirst(branch, regex_ticket);
             }
-            log.info("POM ticketId: " + pomTicketId);
-            log.info("ticketId: " + ticketId);
+            log.debug("POM ticketId: " + pomTicketId);
+            log.debug("ticketId: " + ticketId);
             if (pomTicketId == null) {
                 // NCX-16 write new verion to POM
                 new XMLHandler(log).writeChangedPomWithXPath(pomfile, ticketId);
@@ -167,59 +169,59 @@ public class Plugin extends AbstractMojo {
                     // NCX-26
                     throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
                 } else {
-                    log.info("failOnMissingBranchId parameter is not set");
+                    log.debug("failOnMissingBranchId parameter is not set");
                 }
             } else if (ticketId.equals(pomTicketId)) {
                 // POM Version has TicketID
-                log.info("Git branch ticket ID matches POM ticket ID");
+                log.debug("Git branch ticket ID matches POM ticket ID");
             } else {
                 // POM Version has TicketID
                 throw new MojoExecutionException("mismatch Git branch ticket ID and POM branch version ticket ID");
             }
             // NCX-36 check for affected GroupIds in dependencies
             try {
-                String artefacts = mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
-                if (!artefacts.isEmpty()) {
-                    gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version for " + (artefacts.endsWith(", ") ? artefacts.substring(0, artefacts.length() - 2) : artefacts));
+                String artifacts = mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
+                if (!artifacts.isEmpty()) {
+                    gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version for " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts));
                 }
             } catch (Exception ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
             }
         } else if (checkForAllowedNonBgavBranch(branch)) {
-            log.info("running non BGAV branch");
+            log.debug("running non BGAV branch");
             // remove BGAV from POM
-            log.info("POM Version: " + model.getVersion()); 
+            log.debug("POM Version: " + model.getVersion());
             if (regex_ticket == null || regex_ticket.isEmpty()) {
-                log.info("RegEx for ticket ID is empty, use default one: " + REGEX_TICKET);
+                log.debug("RegEx for ticket ID is empty, use default one: " + REGEX_TICKET);
                 ticketId = getMatchFirst(model.getVersion(), REGEX_TICKET);
             } else {
-                log.info("use provided RegEx for ticket ID: " + regex_ticket);
+                log.debug("use provided RegEx for ticket ID: " + regex_ticket);
                 ticketId = getMatchFirst(model.getVersion(), regex_ticket);
             }
-            log.info("branched version found: " + ticketId);
+            log.debug("branched version found: " + ticketId);
             String nonBgavVersion = mavenHandler.setNonBgavPomVersion(model.getVersion());
             if (!nonBgavVersion.equals(model.getVersion())) {
-                log.info("none BGAV - set correct none branched version to: " + nonBgavVersion);
+                log.debug("none BGAV - set correct none branched version to: " + nonBgavVersion);
                 new XMLHandler(log).writeNonBgavPomWithXPath(pomfile, nonBgavVersion);
                 gitHandler.commitAndPush(git, nonBgavVersion + " - none BGAV - set correct none branched version");
                 throw new MojoExecutionException("build failed due to new none branched version, new version pushed and committed.");
             } else {
-                log.info("no BGAV information inside POM Version.");
+                log.debug("no BGAV information inside POM Version.");
             }
             // remove non BGAV versions from dependencies
             try {
-                String artefacts = mavenHandler.removeBgavFromPom(pomfile, model, namespace);
-                if (!artefacts.isEmpty()) {
-                    log.info("removed non BGAV versions from dependencies");
-                    gitHandler.commitAndPush(git, "removed BGAV from " + (artefacts.endsWith(", ") ? artefacts.substring(0, artefacts.length() - 2) : artefacts));
+                String artifacts = mavenHandler.removeBgavFromPom(pomfile, model, namespace);
+                if (!artifacts.isEmpty()) {
+                    log.debug("removed non BGAV versions from dependencies");
+                    gitHandler.commitAndPush(git, "removed BGAV from " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts));
                 } else {
-                    log.info("non BGAV dependencies have to removed");
+                    log.debug("non BGAV dependencies have to removed");
                 }
             } catch (MojoExecutionException ex) {
                 throw new MojoExecutionException("could not check for dependencies: " + ex);
             }
         } else {
-            log.info("no Git known branch");
+            log.warn("no Git known branch");
             git.close();
             return;
         }
@@ -234,13 +236,13 @@ public class Plugin extends AbstractMojo {
      */
     Boolean checkForAllowedBgavBranch(String branch) {
         String check = "";
-        log.info("check for BGAV branch");
+        log.debug("check for BGAV branch");
         if (regex_bgav_branch == null || regex_bgav_branch.isEmpty()) {
-            log.info("RegEx for BGAV branch is empty, use default one: " + REGEX_BGAV_BRANCH);
+            log.debug("RegEx for BGAV branch is empty, use default one: " + REGEX_BGAV_BRANCH);
             check = getMatchFirst(branch, REGEX_BGAV_BRANCH);
             return check != null && !check.isEmpty();
         } else {
-            log.info("use provided RegEx for BGAV branch: " + regex_bgav_branch);
+            log.debug("use provided RegEx for BGAV branch: " + regex_bgav_branch);
             check = getMatchFirst(branch, regex_bgav_branch);
             return check != null && !check.isEmpty();
         }
@@ -254,9 +256,9 @@ public class Plugin extends AbstractMojo {
      */
     Boolean checkForAllowedNonBgavBranch(String branch) {
         String check = "";
-        log.info("check for non BGAV branch");
+        log.debug("check for non BGAV branch");
         if (regex_not_bgav_branch == null || regex_not_bgav_branch.isEmpty()) {
-            log.info("RegEx for non BGAV branch is empty, use default one: " + REGEX_NON_BGAV_BRANCH);
+            log.debug("RegEx for non BGAV branch is empty, use default one: " + REGEX_NON_BGAV_BRANCH);
             check = getMatchFirst(branch, REGEX_NON_BGAV_BRANCH);
             return check != null && !check.isEmpty();
         } else {
