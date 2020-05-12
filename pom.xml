@@ -37,11 +37,14 @@
     </scm>
 
     <distributionManagement>
+        <!-- Publish versioned releases here -->
         <repository>
             <id>repo.crowdcode.io</id>
             <name>repo.crowdcode.io</name>
             <url>https://repo.crowdcode.io/repository/releases/</url>
         </repository>
+
+        <!-- Publish snapshots here -->
         <snapshotRepository>
             <id>repo.crowdcode.io</id>
             <name>repo.crowdcode.io</name>
@@ -98,4 +101,42 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>sonatype</id>
+            <distributionManagement>
+                <!-- Publish versioned releases here -->
+                <repository>
+                    <id>sonatype-staging</id>
+                    <name>Sonatype Release Staging Repository</name>
+                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
+                </repository>
+
+                <!-- Publish snapshots here -->
+                <snapshotRepository>
+                    <id>sonatype-snapshot</id>
+                    <name>Sonatype Snapshot Repository</name>
+                    <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+                </snapshotRepository>
+            </distributionManagement>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
