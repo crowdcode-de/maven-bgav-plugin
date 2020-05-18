@@ -30,6 +30,14 @@
         </developer>
     </developers>
 
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
     <scm>
         <connection>scm:git:https://github.com/crowdcode-de/maven-bgav-plugin.git</connection>
         <developerConnection>scm:svn:https://github.com/crowdcode-de/maven-bgav-plugin.git</developerConnection>
