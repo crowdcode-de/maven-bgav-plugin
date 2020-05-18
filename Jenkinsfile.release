@@ -6,7 +6,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 withCredentials(
-                        [usernamePassword(credentialsId: 'crowdcode-development-bot',
+                        [usernamePassword(credentialsId: 'e1f5c9f9-214d-4ba3-85d8-cfdefdf3c97b',
                                 usernameVariable: 'gitUser',
                                 passwordVariable: 'gitPwd'
                         )]) {
@@ -20,7 +20,7 @@ pipeline {
         stage('Build release') {
             steps{
                 dir( path: 'target') {
-                    sh "git config user.email 'lbds-build@crowdcode.io'"
+                    sh "git config user.email 'development@crowdcode.io'"
                     sh "git config user.name 'Jenkins Release Job'"
                     sh "git checkout develop"
                     mvn("com.amashchenko.maven.plugin:gitflow-maven-plugin:release-start")
