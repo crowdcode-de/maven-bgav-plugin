@@ -12,7 +12,7 @@ pipeline {
                         )]) {
                     sh "rm -rf target"
                     sh "git clone https://${gitUser}:${gitPwd}@${gitUrl.split('://')[1]} target"
-                    sh "git clone https://${gitUser}:${gitPwd}@${aigitUrl.split('://')[1]} target"
+                    sh "git clone https://${gitUser}:${gitPwd}@${gitUrl.split('://')[1]} target"
                 }
             }
         }
