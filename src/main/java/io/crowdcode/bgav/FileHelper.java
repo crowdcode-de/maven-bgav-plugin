@@ -1,6 +1,7 @@
 package io.crowdcode.bgav;
 
 import org.apache.maven.model.Dependency;
+import org.apache.maven.model.Model;
 import org.apache.maven.plugin.logging.Log;
 
 import java.io.File;
@@ -8,6 +9,9 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+
+import static io.crowdcode.bgav.PropertyHelper.isPlaceholder;
+import static io.crowdcode.bgav.PropertyHelper.resolveProperty;
 
 public class FileHelper {
 
@@ -33,21 +37,25 @@ public class FileHelper {
      * @param dependency
      * @return POM File
      */
-    public File getPOMFilePathFromDependency(Dependency dependency, String localRepositoryPath) {
+    public File getPOMFilePathFromDependency(Model model, Dependency dependency, String localRepositoryPath) {
+        String nativeVersion = dependency.getVersion();
+        final String version = isPlaceholder(nativeVersion) ? resolveProperty(model, nativeVersion) : nativeVersion;
+
         return new File(localRepositoryPath + "/" +
                 dependency.getGroupId().replaceAll("[.]", "/") + "/" +
-                dependency.getArtifactId() + "/" + dependency.getVersion() + "/" +
-                dependency.getArtifactId() + "-" + dependency.getVersion() + ".pom");
+                dependency.getArtifactId() + "/" + version + "/" +
+                dependency.getArtifactId() + "-" + version + ".pom");
     }
 
     /**
      * create local Directory for Git checkout
      *
-     * @param artefact
+     * @param artifact
      */
-    public File createTempGitCheckoutDirectory(String artefact) {
-        log.info("create temp dir for checkout: " + TEMP_DIR + artefact);
-        localDirectory = new File(TEMP_DIR + artefact);
+    public File createTempGitCheckoutDirectory(String artifact) throws IOException {
+        log.info("create temp dir for checkout: " + TEMP_DIR + artifact);
+        localDirectory = File.createTempFile(artifact, "git");
+        localDirectory.delete();
         localDirectory.mkdir();
         return localDirectory;
     }
@@ -55,18 +63,17 @@ public class FileHelper {
     /**
      * delete local Directory for Git checkout
      *
-     * @param artefact
+     * @param artifact
      */
-    public void deleteTempGitCheckoutDirectory(String artefact) {
-        log.info("delete temp dir for checkout: " + TEMP_DIR + artefact);
-        new File(TEMP_DIR + artefact + "/.git").delete();
-        new File(TEMP_DIR + artefact).delete();
-        Path path = new File(TEMP_DIR + artefact).toPath();
+    public void deleteTempGitCheckoutDirectory(File directory) {
+        log.info("delete temp dir for checkout: " + directory);
+        Path path = directory.toPath();
         try {
             Files.walk(path)
                     .sorted(Comparator.reverseOrder())
                     .map(Path::toFile)
                     .forEach(File::delete);
+            directory.deleteOnExit();
         } catch (IOException ex) {
             log.error("could not delete local checkout direcotory: " + ex.getLocalizedMessage());
         }
