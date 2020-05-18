@@ -31,9 +31,8 @@
     </developers>
 
     <scm>
-        <connection>scm:git:https://dev.crowdcode.io/bitbucket/projects/NCX/repos/ncx-maven-bgav-plugin</connection>
-        <developerConnection>scm:svn:https://dev.crowdcode.io/bitbucket/projects/NCX/repos/ncx-maven-bgav-plugin
-        </developerConnection>
+        <connection>scm:git:https://github.com/crowdcode-de/maven-bgav-plugin.git</connection>
+        <developerConnection>scm:svn:https://github.com/crowdcode-de/maven-bgav-plugin.git</developerConnection>
     </scm>
 
     <distributionManagement>
