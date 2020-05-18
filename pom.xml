@@ -38,6 +38,11 @@
         </license>
     </licenses>
 
+    <organization>
+        <name>Crowdcode GmbH + Co.KG</name>
+        <url>http://crowdcode.io</url>
+    </organization>
+
     <scm>
         <connection>scm:git:https://github.com/crowdcode-de/maven-bgav-plugin.git</connection>
         <developerConnection>scm:svn:https://github.com/crowdcode-de/maven-bgav-plugin.git</developerConnection>
