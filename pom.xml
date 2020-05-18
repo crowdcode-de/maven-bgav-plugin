@@ -132,6 +132,9 @@
                                 <goals>
                                     <goal>sign</goal>
                                 </goals>
+                                <configuration>
+                                    <executable>C:\Program Files\Git\usr\bin\gpg.exe</executable>
+                                </configuration>
                             </execution>
                         </executions>
                     </plugin>
