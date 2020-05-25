@@ -70,6 +70,10 @@ public class Plugin extends AbstractMojo {
     @Parameter(property = "namespace")
     private String[] namespace;
 
+    @Parameter(property = "suppressCommit", defaultValue = "false")
+    private boolean suppressCommit;
+
+
     final Log log = getLog();
 
     private final String regexp = "(feature)/([A-Z0-9\\-])*-.*";
@@ -103,7 +107,7 @@ public class Plugin extends AbstractMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
 
         File pomfile = new File("pom.xml");
-        MavenHandler mavenHandler = new MavenHandler(log);
+        MavenHandler mavenHandler = new MavenHandler(log, suppressCommit);
         Model model = mavenHandler.getModel(pomfile);
         log.info("Project " + model);
         log.info("failOnMissingBranchId: " + failOnMissingBranchId);
@@ -130,7 +134,7 @@ public class Plugin extends AbstractMojo {
         // (GIT) must not be develop, master, release
 
         // check for Git Repo -> @todo: autocloseable
-        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword);
+        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit);
         Git git = gitHandler.getGitLocalRepo(model);
         if (git == null) {
             return;
@@ -163,7 +167,7 @@ public class Plugin extends AbstractMojo {
             log.debug("ticketId: " + ticketId);
             if (pomTicketId == null) {
                 // NCX-16 write new verion to POM
-                new XMLHandler(log).writeChangedPomWithXPath(pomfile, ticketId);
+                new XMLHandler(log, suppressCommit).writeChangedPomWithXPath(pomfile, ticketId);
                 gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version");
                 if (failOnMissingBranchId) {
                     // NCX-26
@@ -202,7 +206,7 @@ public class Plugin extends AbstractMojo {
             String nonBgavVersion = mavenHandler.setNonBgavPomVersion(model.getVersion());
             if (!nonBgavVersion.equals(model.getVersion())) {
                 log.debug("none BGAV - set correct none branched version to: " + nonBgavVersion);
-                new XMLHandler(log).writeNonBgavPomWithXPath(pomfile, nonBgavVersion);
+                new XMLHandler(log, suppressCommit).writeNonBgavPomWithXPath(pomfile, nonBgavVersion);
                 gitHandler.commitAndPush(git, nonBgavVersion + " - none BGAV - set correct none branched version");
                 throw new MojoExecutionException("build failed due to new none branched version, new version pushed and committed.");
             } else {

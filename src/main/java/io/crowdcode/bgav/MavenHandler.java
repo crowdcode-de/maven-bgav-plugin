@@ -28,13 +28,16 @@ import static io.crowdcode.bgav.PropertyHelper.*;
 public class MavenHandler {
 
     private final Log log;
+    private final boolean suppressCommit;
 
-    public MavenHandler() {
+    public MavenHandler(boolean suppressCommit) {
+        this.suppressCommit = suppressCommit;
         log = null;
     }
 
-    public MavenHandler(Log log) {
+    public MavenHandler(Log log, boolean suppressCommit) {
         this.log = log;
+        this.suppressCommit = suppressCommit;
     }
 
     /**
@@ -170,7 +173,7 @@ public class MavenHandler {
                                     artifact += artifactId + ", ";
                                     log.info("changed dep: " + dependency);
                                     //                                log.info("POM FILE: " + model.getPomFile());
-                                    new XMLHandler(log).alterDependency(pomfile, artifactId, newVersion);
+                                    new XMLHandler(log, suppressCommit).alterDependency(pomfile, artifactId, newVersion);
                                 }
                             } else {
                                 String resolvedVersion = resolveProperty(model, nativeVersion);
@@ -183,7 +186,7 @@ public class MavenHandler {
                                     artifact += artifactId + ", ";
                                     log.info("changed dep: " + dependency);
                                     //                                log.info("POM FILE: " + model.getPomFile());
-                                    new XMLHandler(log).alterProperty(pomfile, unkey(nativeVersion), newVersion);
+                                    new XMLHandler(log, suppressCommit).alterProperty(pomfile, unkey(nativeVersion), newVersion);
                                 }
                             }
                         }
@@ -226,7 +229,7 @@ public class MavenHandler {
                             dependency.setVersion(newPomDepVersion);
                             artifact += dependency.getArtifactId() + ", ";
                             try {
-                                new XMLHandler(log).alterDependency(pomfile, dependency.getArtifactId(), newPomDepVersion);
+                                new XMLHandler(log, suppressCommit).alterDependency(pomfile, dependency.getArtifactId(), newPomDepVersion);
                             } catch (MojoExecutionException ex) {
                                 log.warn("could not write POM");
                             }
@@ -242,7 +245,7 @@ public class MavenHandler {
                             Object dummy = setProperty(model, version, newVersion);
                             artifact += dependency.getArtifactId() + ", ";
                             try {
-                                new XMLHandler(log).alterProperty(pomfile, unkey(version), newVersion);
+                                new XMLHandler(log, suppressCommit).alterProperty(pomfile, unkey(version), newVersion);
                             } catch (MojoExecutionException ex) {
                                 log.warn("could not write POM");
                             }
@@ -288,7 +291,7 @@ public class MavenHandler {
      * @throws MojoExecutionException
      */
     private Boolean checkoutFromDependencyRepository(Dependency dependency, String dependencyScmUrl, String gituser, String gitpassword, String ticketId) throws MojoExecutionException, IOException {
-        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword);
+        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit);
 
         // setup local temporary Directory for Git checkout
         FileHelper fileHelper = new FileHelper(log);
