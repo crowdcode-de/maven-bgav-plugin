@@ -53,15 +53,23 @@ public class Plugin extends AbstractMojo {
     private String regex_not_bgav_branch;
 
     /**
-     * flag for fail on Jenkins if missing branch id
+     * flag for fail on Jenkins if missing branch id, deprecated since this flag is used for breaking the build
+     * on altered pom.xml - @see failOnAlteredPom
      */
-    @Parameter(property = "failOnMissingBranchId")
-    private boolean failOnMissingBranchId = true;
+    @Deprecated
+    @Parameter(property = "failOnMissingBranchId", alias = "fail_on_missing_branch_id")
+    private boolean failOnMissingBranchId = false;
+
+    /**
+     * flag for fail on altered pom.xml
+     */
+    @Parameter(property = "failOnAlteredPom", alias = "fail_on_altered_pom")
+    private boolean failOnAlteredPom = false;
 
     /**
      * setting branch id for Jenkinsfile
      */
-    @Parameter(property = "branchName")
+    @Parameter(property = "branchName", alias = "branch_name")
     private String branchName;
 
     /**
@@ -70,6 +78,10 @@ public class Plugin extends AbstractMojo {
     @Parameter(property = "namespace")
     private String[] namespace;
 
+
+    /**
+     * only debugging/testing purpose, suppress commit+push
+     */
     @Parameter(property = "suppressCommit", defaultValue = "false")
     private boolean suppressCommit;
 
@@ -110,7 +122,8 @@ public class Plugin extends AbstractMojo {
         MavenHandler mavenHandler = new MavenHandler(log, suppressCommit);
         Model model = mavenHandler.getModel(pomfile);
         log.info("Project " + model);
-        log.info("failOnMissingBranchId: " + failOnMissingBranchId);
+        log.info("failOnMissingBranchId: " + failOnMissingBranchId + " (DEPRECATED, please use failOnAlteredPom Parameter for future use)");
+        log.info("failOnAlteredPom: " + failOnAlteredPom);
         log.info("branchName: " + branchName);
         log.info("getLocalRepository: " + settings.getLocalRepository());
         if ((gituser == null || gituser.isEmpty()) || (gitpassword == null || gitpassword.isEmpty())) {
@@ -169,7 +182,7 @@ public class Plugin extends AbstractMojo {
                 // NCX-16 write new verion to POM
                 new XMLHandler(log, suppressCommit).writeChangedPomWithXPath(pomfile, ticketId);
                 gitHandler.commitAndPush(git, ticketId + " - BGAV - set correct branched version");
-                if (failOnMissingBranchId) {
+                if (failOnMissingBranchId || failOnAlteredPom) {
                     // NCX-26
                     throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
                 } else {
@@ -208,7 +221,9 @@ public class Plugin extends AbstractMojo {
                 log.debug("none BGAV - set correct none branched version to: " + nonBgavVersion);
                 new XMLHandler(log, suppressCommit).writeNonBgavPomWithXPath(pomfile, nonBgavVersion);
                 gitHandler.commitAndPush(git, nonBgavVersion + " - none BGAV - set correct none branched version");
-                throw new MojoExecutionException("build failed due to new none branched version, new version pushed and committed.");
+                if (failOnMissingBranchId || failOnAlteredPom) {
+                    throw new MojoExecutionException("build failed due to new none branched version, new version pushed and committed.");
+                }
             } else {
                 log.debug("no BGAV information inside POM Version.");
             }
