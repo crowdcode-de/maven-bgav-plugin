@@ -38,20 +38,24 @@ public class GitHandler {
      */
     private String gitpassword;
 
+    private final boolean suppressCommit;
+
     private final Log log;
 
 //    public GitHandler() {
 //        log = null;
 //    }
 
-    public GitHandler(Log log) {
+    public GitHandler(boolean suppressCommit, Log log) {
+        this.suppressCommit = suppressCommit;
         this.log = log;
     }
 
-    public GitHandler(Log log, String gituser, String gitpassword) {
+    public GitHandler(Log log, String gituser, String gitpassword, boolean suppressCommit) {
         this.log = log;
         this.gituser = gituser;
         this.gitpassword = gitpassword;
+        this.suppressCommit = suppressCommit;
     }
 
     /**
@@ -154,14 +158,19 @@ public class GitHandler {
      * @throws MojoExecutionException
      */
     void commitAndPush(Git git, String commitMessage) throws MojoExecutionException {
-        try {
-            CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
-            git.add().addFilepattern("pom.xml").call();
-            git.commit().setMessage(commitMessage).call();
-            git.push().setCredentialsProvider(cp).call();
-        } catch (GitAPIException ex) {
-            log.error("GitAPIException: " + ex);
-            throw new MojoExecutionException("Git commit/push failed: " + ex);
+
+        if (!suppressCommit) {
+            try {
+                CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
+                git.add().addFilepattern("pom.xml").call();
+                git.commit().setMessage(commitMessage).call();
+                git.push().setCredentialsProvider(cp).call();
+            } catch (GitAPIException ex) {
+                log.error("GitAPIException: " + ex);
+                throw new MojoExecutionException("Git commit/push failed: " + ex);
+            }
+        } else {
+            log.info("Suppressing commit. Nothing is commit or pushed");
         }
     }
 

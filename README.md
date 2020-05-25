@@ -8,7 +8,7 @@ Maven plugin for adding ticket id to POM Version, if Git branch is feature, bugf
 
 ## Requirements
 
-JDK 8
+JDK 8+
 
 
 ## Installation
@@ -39,6 +39,7 @@ If you want to use with Jenkins, just add it your Jenkinsfile, tested on Jenkins
           <regex_ticket>(\p{Upper}{1,}-\d{1,})</regex_ticket>
           <gituser>gituser</gituser>
           <gitpassword>gitpassword</gitpassword>
+          <namespace>your.groupid.namespace</namespace>
         </configuration>
       </plugin>
     </plugins>
@@ -66,7 +67,7 @@ pipeline {
                         )]) {
                 sh "git status"
                 sh "git checkout ${env.BRANCH_NAME}"
-                mvn("-DfailOnMissingBranchId=false -DbranchName=${env.BRANCH_NAME} -Dgituser=${gituser} -D=gitpassword=${gitPwd} io.crowdcode:bgav-maven-plugin:0.2.1:bgav")
+                mvn("-DfailOnAlteredPom=false -DbranchName=${env.BRANCH_NAME} -Dgituser=${gituser} -D=gitpassword=${gitPwd} io.crowdcode:bgav-maven-plugin:0.2.1:bgav")
                 }
            }
         }
@@ -105,8 +106,11 @@ mvn -Dgituser=xxxx -D=gitpassword=yyyy io.crowdcode:bgav-maven-plugin:bgav
 - gitpassword, Git password
 - regex_ticket, RegEx for getting the ticket id
 - regex_branch, RegEx for getting the branch
-- failOnMissingBranchId, flag for fail on Jenkins if missing branch id, default true, set for Jenkins build to false, -DfailOnMissingBranchId=false
+- (DEPRECATED) failOnMissingBranchId, flag for fail on Jenkins if missing branch id, default true, set for Jenkins build to false, -DfailOnMissingBranchId=false
+- failOnAlteredPom, flag to fail the build if the pom has been modified, commited and pushed by the plugin
 - branchName, for setting branch name in Jenkins
+- namespace, a list of groupIds which shall be regarded when the plugin is walking through the dependencies. Normally this 
+  should be the groupIds of your own modules, e.g. com.yourcompany
 
 
 ## Author
