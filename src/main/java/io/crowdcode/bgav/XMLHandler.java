@@ -24,19 +24,21 @@ import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
 
 /**
- *
  * @author andreas
  */
 public class XMLHandler {
 
     private final Log log;
+    private final boolean suppressCommit;
 
-    public XMLHandler() {
+    public XMLHandler(boolean suppresCommit) {
+        this.suppressCommit = suppresCommit;
         log = null;
     }
 
-    public XMLHandler(Log log) {
+    public XMLHandler(Log log, boolean suppresCommit) {
         this.log = log;
+        this.suppressCommit = suppresCommit;
     }
 
     /**
@@ -53,7 +55,7 @@ public class XMLHandler {
             String expression = "/project/version";
             NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
             String oldPomVersion = nodeList.item(0).getTextContent();
-            nodeList.item(0).setTextContent(new MavenHandler(log).setPomVersion(oldPomVersion, ticketID));
+            nodeList.item(0).setTextContent(new MavenHandler(log, suppressCommit).setPomVersion(oldPomVersion, ticketID));
             writePomFile(pomfile, document);
         } catch (Exception ex) {
             log.error("IOException: " + ex);
