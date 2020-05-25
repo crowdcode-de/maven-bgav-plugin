@@ -109,6 +109,8 @@ mvn -Dgituser=xxxx -D=gitpassword=yyyy io.crowdcode:bgav-maven-plugin:bgav
 - (DEPRECATED) failOnMissingBranchId, flag for fail on Jenkins if missing branch id, default true, set for Jenkins build to false, -DfailOnMissingBranchId=false
 - failOnAlteredPom, flag to fail the build if the pom has been modified, commited and pushed by the plugin
 - branchName, for setting branch name in Jenkins
+- namespace, a list of groupIds which shall be regarded when the plugin is walking through the dependencies. Normally this 
+  should be the groupIds of your own modules, e.g. com.yourcompany
 
 
 ## Author

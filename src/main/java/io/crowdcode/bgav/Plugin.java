@@ -75,7 +75,7 @@ public class Plugin extends AbstractMojo {
     /**
      * setting for effected group ids walking through the dependencies
      */
-    @Parameter(property = "namespace")
+    @Parameter(property = "namespace", required = true)
     private String[] namespace;
 
 
