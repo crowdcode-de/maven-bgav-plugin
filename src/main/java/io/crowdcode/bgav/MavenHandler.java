@@ -2,6 +2,7 @@ package io.crowdcode.bgav;
 
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.DeploymentRepository;
+import org.apache.maven.model.DistributionManagement;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -131,7 +132,16 @@ public class MavenHandler {
             return "";
         }
         log.info("checking dependencies for affected group id(s)...");
-        DeploymentRepository deploymentRepository = model.getDistributionManagement().getSnapshotRepository();
+        final DistributionManagement distributionManagement = model.getDistributionManagement();
+
+        if (distributionManagement == null || distributionManagement.getSnapshotRepository() == null) {
+            log.warn("============================== MISSING DISTRIBUTION MANAGEMENT! ==============================");
+            log.warn("========= Distribution Management is not properly configured! Skipping dependencies! =========");
+            log.warn("============================== MISSING DISTRIBUTION MANAGEMENT! ==============================");
+            return "";
+        }
+
+        DeploymentRepository deploymentRepository = distributionManagement.getSnapshotRepository();
         log.info("using deployment repository: " + deploymentRepository + " with URL: " + deploymentRepository.getUrl());
         List<Dependency> dependencyListmodel = model.getDependencies();
         String artifact = "";
@@ -161,7 +171,7 @@ public class MavenHandler {
                                 artifactId + "/" + nativeVersion + " POM file - skipping");
                     } else {
                         log.info("Dependency SCM URL found: " + dependencyScmUrl);
-                        if ( checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId)) {
+                        if (checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId)) {
                             //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
                             if (!isPlaceholder(nativeVersion)) {
                                 log.info("want to change: " + nativeVersion + " -- " + ticketId);
