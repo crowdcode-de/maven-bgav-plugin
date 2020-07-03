@@ -2,6 +2,7 @@ package io.crowdcode.bgav;
 
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.DeploymentRepository;
+import org.apache.maven.model.DistributionManagement;
 import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -131,7 +132,16 @@ public class MavenHandler {
             return "";
         }
         log.info("checking dependencies for affected group id(s)...");
-        DeploymentRepository deploymentRepository = model.getDistributionManagement().getSnapshotRepository();
+        final DistributionManagement distributionManagement = model.getDistributionManagement();
+
+        if (distributionManagement == null || distributionManagement.getSnapshotRepository() == null) {
+            log.warn("============================== MISSING DISTRIBUTION MANAGEMENT! ==============================");
+            log.warn("========= Distribution Management is not properly configured! Skipping dependencies! =========");
+            log.warn("============================== MISSING DISTRIBUTION MANAGEMENT! ==============================");
+            return "";
+        }
+
+        DeploymentRepository deploymentRepository = distributionManagement.getSnapshotRepository();
         log.info("using deployment repository: " + deploymentRepository + " with URL: " + deploymentRepository.getUrl());
         List<Dependency> dependencyListmodel = model.getDependencies();
         String artifact = "";
@@ -151,45 +161,50 @@ public class MavenHandler {
                     }
                     // --> get POM from SCM from project POM file
                     // get Git Project URI
-                    String dependencyScmUrl = dependencyModel.getScm().getUrl();
-                    String artifactId = dependency.getArtifactId();
-                    if (dependencyScmUrl == null || dependencyScmUrl.isEmpty()) {
-                        if (!dependencyModel.getScm().getConnection().isEmpty()) {
-                            log.info("Dependency SCM entries found");
-                        }
-                        log.warn("no SCM URL for affected dependency found, please add <url></url> tag to " +
-                                artifactId + "/" + nativeVersion + " POM file - skipping");
-                    } else {
-                        log.info("Dependency SCM URL found: " + dependencyScmUrl);
-                        if ( checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId)) {
-                            //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
-                            if (!isPlaceholder(nativeVersion)) {
-                                log.info("want to change: " + nativeVersion + " -- " + ticketId);
-                                String newVersion = setPomVersion(nativeVersion, ticketId);
-                                if (nativeVersion.contains(ticketId)) {
-                                    log.info("POM contains ticketId - do nothing");
+
+                    if (dependencyModel.getScm() != null) {
+                        String dependencyScmUrl = dependencyModel.getScm().getUrl();
+                        String artifactId = dependency.getArtifactId();
+                        if (dependencyScmUrl == null || dependencyScmUrl.isEmpty()) {
+                            if (!dependencyModel.getScm().getConnection().isEmpty()) {
+                                log.info("Dependency SCM entries found");
+                            }
+                            log.warn("no SCM URL for affected dependency found, please add <url></url> tag to " +
+                                    artifactId + "/" + nativeVersion + " POM file - skipping");
+                        } else {
+                            log.info("Dependency SCM URL found: " + dependencyScmUrl);
+                            if (checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId)) {
+                                //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
+                                if (!isPlaceholder(nativeVersion)) {
+                                    log.info("want to change: " + nativeVersion + " -- " + ticketId);
+                                    String newVersion = setPomVersion(nativeVersion, ticketId);
+                                    if (nativeVersion.contains(ticketId)) {
+                                        log.info("POM contains ticketId - do nothing");
+                                    } else {
+                                        dependency.setVersion(setPomVersion(nativeVersion, ticketId));
+                                        artifact += artifactId + ", ";
+                                        log.info("changed dep: " + dependency);
+                                        //                                log.info("POM FILE: " + model.getPomFile());
+                                        new XMLHandler(log, suppressCommit).alterDependency(pomfile, artifactId, newVersion);
+                                    }
                                 } else {
-                                    dependency.setVersion(setPomVersion(nativeVersion, ticketId));
-                                    artifact += artifactId + ", ";
-                                    log.info("changed dep: " + dependency);
-                                    //                                log.info("POM FILE: " + model.getPomFile());
-                                    new XMLHandler(log, suppressCommit).alterDependency(pomfile, artifactId, newVersion);
-                                }
-                            } else {
-                                String resolvedVersion = resolveProperty(model, nativeVersion);
-                                log.info("want to change placeholder: " + nativeVersion + " (" + resolvedVersion + ") -- " + ticketId);
-                                if (resolvedVersion.contains(ticketId)) {
-                                    log.info("POM contains ticketId - do nothing");
-                                } else {
-                                    String newVersion = setPomVersion(resolvedVersion, ticketId);
-                                    setProperty(model, nativeVersion, newVersion);
-                                    artifact += artifactId + ", ";
-                                    log.info("changed dep: " + dependency);
-                                    //                                log.info("POM FILE: " + model.getPomFile());
-                                    new XMLHandler(log, suppressCommit).alterProperty(pomfile, unkey(nativeVersion), newVersion);
+                                    String resolvedVersion = resolveProperty(model, nativeVersion);
+                                    log.info("want to change placeholder: " + nativeVersion + " (" + resolvedVersion + ") -- " + ticketId);
+                                    if (resolvedVersion.contains(ticketId)) {
+                                        log.info("POM contains ticketId - do nothing");
+                                    } else {
+                                        String newVersion = setPomVersion(resolvedVersion, ticketId);
+                                        setProperty(model, nativeVersion, newVersion);
+                                        artifact += artifactId + ", ";
+                                        log.info("changed dep: " + dependency);
+                                        //                                log.info("POM FILE: " + model.getPomFile());
+                                        new XMLHandler(log, suppressCommit).alterProperty(pomfile, unkey(nativeVersion), newVersion);
+                                    }
                                 }
                             }
                         }
+                    } else  {
+                        log.info(dependency.getGroupId()+":"+dependency.getArtifactId()+":"+dependency.getVersion()+" has no SCM configured");
                     }
                 }
             }
