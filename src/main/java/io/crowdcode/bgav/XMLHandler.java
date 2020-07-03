@@ -45,20 +45,42 @@ public class XMLHandler {
     }
 
     /**
+     * set a BGAV version the project version
+     *
+     * @param pomfile
+     * @param ticketID
+     * @throws MojoExecutionException
+     */
+    void setBgavOnVersion(File pomfile, String ticketID) throws MojoExecutionException {
+        writeChangedPomWithXPath(pomfile,ticketID, "/project/version");
+    }
+
+    /**
+     * set a BGAV version the project's parent version
+     *
+     * @param pomfile
+     * @param ticketID
+     * @throws MojoExecutionException
+     */
+    void setBgavOnParentVersion(File pomfile, String ticketID) throws MojoExecutionException {
+        writeChangedPomWithXPath(pomfile,ticketID, "/project/parent/version");
+    }
+
+    /**
      * read end write POM with XPAth, due to an error in MavenXpp3Writer
      *
      * @param pomfile
      * @param ticketID
      * @throws MojoExecutionException
      */
-    void writeChangedPomWithXPath(File pomfile, String ticketID) throws MojoExecutionException {
+    private void writeChangedPomWithXPath(File pomfile, String ticketID, String expression) throws MojoExecutionException {
         try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {
             Document document = getDocument(fileInputStream);
             XPath xPath = XPathFactory.newInstance().newXPath();
-            String expression = "/project/version";
             NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
             String oldPomVersion = nodeList.item(0).getTextContent();
-            nodeList.item(0).setTextContent(new MavenHandler(log, suppressCommit, suppressPush).setPomVersion(oldPomVersion, ticketID));
+            final String textContent = new MavenHandler(log, suppressCommit, suppressPush).determinePomVersion(oldPomVersion, ticketID);
+            nodeList.item(0).setTextContent(textContent);
             writePomFile(pomfile, document);
         } catch (Exception ex) {
             log.error("IOException: " + ex);
@@ -67,19 +89,35 @@ public class XMLHandler {
     }
 
     /**
-     * read end write POM with XPAth, due to an error in MavenXpp3Writer
+     * remote the BGAV version from the project version
      *
      * @param pomfile
      * @param pomVersion
      * @throws MojoExecutionException
      */
-    void writeNonBgavPomWithXPath(File pomfile, String pomVersion) throws MojoExecutionException {
+    void removeBgavFromVersion(File pomfile, String pomVersion) throws MojoExecutionException {
+        String location = "/project/version";
+        setVersionInPom(pomfile, location, pomVersion);
+    }
+
+
+    /**
+     * remote the BGAV version from the project's parent version
+     *
+     * @param pomfile
+     * @param pomVersion
+     * @throws MojoExecutionException
+     */
+    void removeBgavFromParentVersion(File pomfile, String pomVersion) throws MojoExecutionException {
+        String location = "/project/parent/version";
+        setVersionInPom(pomfile, location, pomVersion);
+    }
+
+    void setVersionInPom(File pomfile, String location, String pomVersion) throws MojoExecutionException {
         try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {
             Document document = getDocument(fileInputStream);
             XPath xPath = XPathFactory.newInstance().newXPath();
-            String expression = "/project/version";
-            NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
-            String oldPomVersion = nodeList.item(0).getTextContent();
+            NodeList nodeList = (NodeList) xPath.compile(location).evaluate(document, XPathConstants.NODESET);
             nodeList.item(0).setTextContent(pomVersion);
             writePomFile(pomfile, document);
         } catch (Exception ex) {
@@ -87,6 +125,7 @@ public class XMLHandler {
             throw new MojoExecutionException("could not write POM: " + ex);
         }
     }
+
 
     void alterDependency(File pomfile, String artifact, String newVersion) throws MojoExecutionException {
         try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {

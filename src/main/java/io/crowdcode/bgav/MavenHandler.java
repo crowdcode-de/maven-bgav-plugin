@@ -73,7 +73,7 @@ public class MavenHandler {
      * @param ticketID
      * @return new POM Version
      */
-    public String setPomVersion(String pomVersion, String ticketID) {
+    public String determinePomVersion(String pomVersion, String ticketID) {
         // check is dependency has wrong ticketId
         String ticketId = extractTicketId(pomVersion);
         log.info("found ticketId in dependency: " + ticketId);
@@ -180,11 +180,11 @@ public class MavenHandler {
                                 //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
                                 if (!isPlaceholder(nativeVersion)) {
                                     log.info("want to change: " + nativeVersion + " -- " + ticketId);
-                                    String newVersion = setPomVersion(nativeVersion, ticketId);
+                                    String newVersion = determinePomVersion(nativeVersion, ticketId);
                                     if (nativeVersion.contains(ticketId)) {
                                         log.info("POM contains ticketId - do nothing");
                                     } else {
-                                        dependency.setVersion(setPomVersion(nativeVersion, ticketId));
+                                        dependency.setVersion(determinePomVersion(nativeVersion, ticketId));
                                         artifact += artifactId + ", ";
                                         log.info("changed dep: " + dependency);
                                         //                                log.info("POM FILE: " + model.getPomFile());
@@ -196,7 +196,7 @@ public class MavenHandler {
                                     if (resolvedVersion.contains(ticketId)) {
                                         log.info("POM contains ticketId - do nothing");
                                     } else {
-                                        String newVersion = setPomVersion(resolvedVersion, ticketId);
+                                        String newVersion = determinePomVersion(resolvedVersion, ticketId);
                                         setProperty(model, nativeVersion, newVersion);
                                         artifact += artifactId + ", ";
                                         log.info("changed dep: " + dependency);

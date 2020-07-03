@@ -194,7 +194,7 @@ public class GitHandler {
      */
     public void writeChangedPOM(Model model, MavenHandler mavenHandler, String ticketID, File pomfile) throws MojoExecutionException {
         // NCX-15
-        model.setVersion(mavenHandler.setPomVersion(model.getVersion(), ticketID));
+        model.setVersion(mavenHandler.determinePomVersion(model.getVersion(), ticketID));
         try (final FileOutputStream fileOutputStream = new FileOutputStream(pomfile)) {
             new MavenXpp3Writer().write(fileOutputStream, model);
         } catch (IOException ex) {
