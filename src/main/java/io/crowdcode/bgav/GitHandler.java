@@ -39,23 +39,25 @@ public class GitHandler {
     private String gitpassword;
 
     private final boolean suppressCommit;
-
+    private final boolean suppressPush;
     private final Log log;
 
 //    public GitHandler() {
 //        log = null;
 //    }
 
-    public GitHandler(boolean suppressCommit, Log log) {
+    public GitHandler(boolean suppressCommit, boolean suppressPush, Log log) {
         this.suppressCommit = suppressCommit;
+        this.suppressPush = suppressPush;
         this.log = log;
     }
 
-    public GitHandler(Log log, String gituser, String gitpassword, boolean suppressCommit) {
+    public GitHandler(Log log, String gituser, String gitpassword, boolean suppressCommit, boolean suppressPush) {
         this.log = log;
         this.gituser = gituser;
         this.gitpassword = gitpassword;
         this.suppressCommit = suppressCommit;
+        this.suppressPush = suppressPush;
     }
 
     /**
@@ -157,20 +159,26 @@ public class GitHandler {
      * @param commitMessage
      * @throws MojoExecutionException
      */
-    void commitAndPush(Git git, String commitMessage) throws MojoExecutionException {
+    void commit(Git git, String commitMessage) throws MojoExecutionException {
 
         if (!suppressCommit) {
             try {
                 CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
                 git.add().addFilepattern("pom.xml").call();
                 git.commit().setMessage(commitMessage).call();
-                git.push().setCredentialsProvider(cp).call();
             } catch (GitAPIException ex) {
                 log.error("GitAPIException: " + ex);
                 throw new MojoExecutionException("Git commit/push failed: " + ex);
             }
         } else {
             log.info("Suppressing commit. Nothing is commit or pushed");
+        }
+    }
+
+    void push(Git git) throws GitAPIException {
+        if (!suppressCommit && !suppressPush) {
+            CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
+            git.push().setCredentialsProvider(cp).call();
         }
     }
 

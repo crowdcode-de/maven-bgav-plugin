@@ -30,15 +30,18 @@ public class MavenHandler {
 
     private final Log log;
     private final boolean suppressCommit;
+    private final boolean suppressPush;
 
-    public MavenHandler(boolean suppressCommit) {
+    public MavenHandler(boolean suppressCommit, boolean suppressPush) {
         this.suppressCommit = suppressCommit;
+        this.suppressPush = suppressPush;
         log = null;
     }
 
-    public MavenHandler(Log log, boolean suppressCommit) {
+    public MavenHandler(Log log, boolean suppressCommit, boolean suppressPush) {
         this.log = log;
         this.suppressCommit = suppressCommit;
+        this.suppressPush = suppressPush;
     }
 
     /**
@@ -185,7 +188,7 @@ public class MavenHandler {
                                         artifact += artifactId + ", ";
                                         log.info("changed dep: " + dependency);
                                         //                                log.info("POM FILE: " + model.getPomFile());
-                                        new XMLHandler(log, suppressCommit).alterDependency(pomfile, artifactId, newVersion);
+                                        new XMLHandler(log, suppressCommit, suppressPush).alterDependency(pomfile, artifactId, newVersion);
                                     }
                                 } else {
                                     String resolvedVersion = resolveProperty(model, nativeVersion);
@@ -198,7 +201,7 @@ public class MavenHandler {
                                         artifact += artifactId + ", ";
                                         log.info("changed dep: " + dependency);
                                         //                                log.info("POM FILE: " + model.getPomFile());
-                                        new XMLHandler(log, suppressCommit).alterProperty(pomfile, unkey(nativeVersion), newVersion);
+                                        new XMLHandler(log, suppressCommit, suppressPush).alterProperty(pomfile, unkey(nativeVersion), newVersion);
                                     }
                                 }
                             }
@@ -244,7 +247,7 @@ public class MavenHandler {
                             dependency.setVersion(newPomDepVersion);
                             artifact += dependency.getArtifactId() + ", ";
                             try {
-                                new XMLHandler(log, suppressCommit).alterDependency(pomfile, dependency.getArtifactId(), newPomDepVersion);
+                                new XMLHandler(log, suppressCommit, suppressPush).alterDependency(pomfile, dependency.getArtifactId(), newPomDepVersion);
                             } catch (MojoExecutionException ex) {
                                 log.warn("could not write POM");
                             }
@@ -260,7 +263,7 @@ public class MavenHandler {
                             Object dummy = setProperty(model, version, newVersion);
                             artifact += dependency.getArtifactId() + ", ";
                             try {
-                                new XMLHandler(log, suppressCommit).alterProperty(pomfile, unkey(version), newVersion);
+                                new XMLHandler(log, suppressCommit, suppressPush).alterProperty(pomfile, unkey(version), newVersion);
                             } catch (MojoExecutionException ex) {
                                 log.warn("could not write POM");
                             }
@@ -306,7 +309,7 @@ public class MavenHandler {
      * @throws MojoExecutionException
      */
     private Boolean checkoutFromDependencyRepository(Dependency dependency, String dependencyScmUrl, String gituser, String gitpassword, String ticketId) throws MojoExecutionException, IOException {
-        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit);
+        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit, suppressPush);
 
         // setup local temporary Directory for Git checkout
         FileHelper fileHelper = new FileHelper(log);

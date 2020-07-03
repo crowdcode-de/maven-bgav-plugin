@@ -30,15 +30,18 @@ public class XMLHandler {
 
     private final Log log;
     private final boolean suppressCommit;
+    private final boolean suppressPush;
 
-    public XMLHandler(boolean suppresCommit) {
+    public XMLHandler(boolean suppresCommit, boolean suppressPush) {
         this.suppressCommit = suppresCommit;
+        this.suppressPush = suppressPush;
         log = null;
     }
 
-    public XMLHandler(Log log, boolean suppresCommit) {
+    public XMLHandler(Log log, boolean suppresCommit, boolean suppressPush) {
         this.log = log;
         this.suppressCommit = suppresCommit;
+        this.suppressPush = suppressPush;
     }
 
     /**
@@ -55,7 +58,7 @@ public class XMLHandler {
             String expression = "/project/version";
             NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
             String oldPomVersion = nodeList.item(0).getTextContent();
-            nodeList.item(0).setTextContent(new MavenHandler(log, suppressCommit).setPomVersion(oldPomVersion, ticketID));
+            nodeList.item(0).setTextContent(new MavenHandler(log, suppressCommit, suppressPush).setPomVersion(oldPomVersion, ticketID));
             writePomFile(pomfile, document);
         } catch (Exception ex) {
             log.error("IOException: " + ex);
