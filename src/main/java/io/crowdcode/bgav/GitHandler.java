@@ -19,6 +19,7 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -42,22 +43,27 @@ public class GitHandler {
     private final boolean suppressPush;
     private final Log log;
 
+    private final List<String> commitMessages = new ArrayList<>();
+    private final File baseDir;
+
 //    public GitHandler() {
 //        log = null;
 //    }
 
-    public GitHandler(boolean suppressCommit, boolean suppressPush, Log log) {
+    public GitHandler(boolean suppressCommit, boolean suppressPush, Log log, File baseDir) {
         this.suppressCommit = suppressCommit;
         this.suppressPush = suppressPush;
         this.log = log;
+        this.baseDir = baseDir;
     }
 
-    public GitHandler(Log log, String gituser, String gitpassword, boolean suppressCommit, boolean suppressPush) {
+    public GitHandler(Log log, String gituser, String gitpassword, boolean suppressCommit, boolean suppressPush, File baseDir) {
         this.log = log;
         this.gituser = gituser;
         this.gitpassword = gitpassword;
         this.suppressCommit = suppressCommit;
         this.suppressPush = suppressPush;
+        this.baseDir = baseDir;
     }
 
     /**
@@ -159,13 +165,17 @@ public class GitHandler {
      * @param commitMessage
      * @throws MojoExecutionException
      */
-    void commit(Git git, String commitMessage) throws MojoExecutionException {
+    void add(Git git, String commitMessage, File pom) throws MojoExecutionException {
 
         if (!suppressCommit) {
             try {
                 CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
-                git.add().addFilepattern("pom.xml").call();
-                git.commit().setMessage(commitMessage).call();
+                String relativePath = pom.getAbsolutePath().replace(baseDir.getAbsolutePath(),"").substring(1);
+                git.add().addFilepattern(relativePath).call();
+                // git.commit().setMessage(commitMessage).call();
+                if (!commitMessages.contains(commitMessage)) {
+                    commitMessages.add(commitMessage);
+                }
             } catch (GitAPIException ex) {
                 log.error("GitAPIException: " + ex);
                 throw new MojoExecutionException("Git commit/push failed: " + ex);
@@ -175,7 +185,10 @@ public class GitHandler {
         }
     }
 
-    void push(Git git) throws GitAPIException {
+    void commitAndPush(Git git) throws GitAPIException {
+        if (!suppressCommit) {
+            git.commit().setMessage(String.join("\n", commitMessages)).call();
+        }
         if (!suppressCommit && !suppressPush) {
             CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
             git.push().setCredentialsProvider(cp).call();

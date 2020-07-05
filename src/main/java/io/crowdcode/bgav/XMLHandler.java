@@ -31,17 +31,20 @@ public class XMLHandler {
     private final Log log;
     private final boolean suppressCommit;
     private final boolean suppressPush;
+    private final MavenHandler mavenHandler;
 
-    public XMLHandler(boolean suppresCommit, boolean suppressPush) {
+    public XMLHandler(boolean suppresCommit, boolean suppressPush, MavenHandler mavenHandler) {
         this.suppressCommit = suppresCommit;
         this.suppressPush = suppressPush;
+        this.mavenHandler = mavenHandler;
         log = null;
     }
 
-    public XMLHandler(Log log, boolean suppresCommit, boolean suppressPush) {
+    public XMLHandler(Log log, boolean suppresCommit, boolean suppressPush, MavenHandler mavenHandler) {
         this.log = log;
         this.suppressCommit = suppresCommit;
         this.suppressPush = suppressPush;
+        this.mavenHandler = mavenHandler;
     }
 
     /**
@@ -79,7 +82,7 @@ public class XMLHandler {
             XPath xPath = XPathFactory.newInstance().newXPath();
             NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
             String oldPomVersion = nodeList.item(0).getTextContent();
-            final String textContent = new MavenHandler(log, suppressCommit, suppressPush).determinePomVersion(oldPomVersion, ticketID);
+            final String textContent = mavenHandler.determinePomVersion(oldPomVersion, ticketID);
             nodeList.item(0).setTextContent(textContent);
             writePomFile(pomfile, document);
         } catch (Exception ex) {

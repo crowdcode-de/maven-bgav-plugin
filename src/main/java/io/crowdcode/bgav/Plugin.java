@@ -119,6 +119,7 @@ public class Plugin extends AbstractMojo {
     private Settings settings;
 
     private final Map<String, Model> artifactMap = new HashMap<>();
+    private File baseDir;
 
     /**
      * Maven plugin for adding ticket id to POM Version, if Git branch is
@@ -131,7 +132,8 @@ public class Plugin extends AbstractMojo {
     public void execute() throws MojoExecutionException, MojoFailureException {
 
         File pomfile = new File("pom.xml");
-        MavenHandler mavenHandler = new MavenHandler(log, suppressCommit, suppressPush);
+        baseDir = pomfile.getAbsoluteFile().getParentFile();
+        MavenHandler mavenHandler = new MavenHandler(log, suppressCommit, suppressPush, baseDir);
         Model model = mavenHandler.getModel(pomfile);
 
         log.info("Project " + model);
@@ -160,7 +162,7 @@ public class Plugin extends AbstractMojo {
         // (GIT) must not be develop, master, release
 
         // check for Git Repo -> @todo: autocloseable
-        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit, suppressPush);
+        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit, suppressPush, baseDir);
         Git git = gitHandler.getGitLocalRepo(model);
         if (git == null) {
             return;
@@ -176,7 +178,7 @@ public class Plugin extends AbstractMojo {
         boolean gottaPush = processPom(pomfile, mavenHandler, model, gitHandler, git, branch, false, "");
         if (gottaPush) {
             try {
-                gitHandler.push(git);
+                gitHandler.commitAndPush(git);
             } catch (GitAPIException e) {
                 throw new MojoExecutionException("Git push failed! "+e.getMessage(),e);
             }
@@ -221,8 +223,8 @@ public class Plugin extends AbstractMojo {
                 log.debug("ticketId: " + ticketId);
                 if (versionMustBeRegarded) {
                     // NCX-16 write new verion to POM
-                    new XMLHandler(log, suppressCommit, suppressPush).setBgavOnVersion(pomfile, ticketId);
-                    gitHandler.commit(git, ticketId + " - BGAV - set correct branched version");
+                    new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnVersion(pomfile, ticketId);
+                    gitHandler.add(git, ticketId + " - BGAV - set correct branched version", pomfile);
                     gottaPush=true;
                     if (failOnMissingBranchId || failOnAlteredPom) {
                         // NCX-26
@@ -241,14 +243,15 @@ public class Plugin extends AbstractMojo {
                 }
 
                 if (parentMustBeRegarded && artifactMap.containsKey(model.getParent().getId())) {
-                    new XMLHandler(log, suppressCommit, suppressPush).setBgavOnParentVersion(pomfile, ticketId);
+                    new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnParentVersion(pomfile, ticketId);
+                    gitHandler.add(git, ticketId + " - BGAV - set correct branched version",pomfile);
                 }
 
                 // NCX-36 check for affected GroupIds in dependencies
                 try {
                     String artifacts = mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
                     if (!artifacts.isEmpty()) {
-                        gitHandler.commit(git, ticketId + " - BGAV - set correct branched version for " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts));
+                        gitHandler.add(git, ticketId + " - BGAV - set correct branched version for " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts),pomfile);
                         gottaPush=true;
                     }
                 } catch (Exception ex) {
@@ -269,8 +272,8 @@ public class Plugin extends AbstractMojo {
                 String nonBgavVersion = mavenHandler.setNonBgavPomVersion(version);
                 if (!nonBgavVersion.equals(version)) {
                     log.debug("none BGAV - set correct none branched version to: " + nonBgavVersion);
-                    new XMLHandler(log, suppressCommit, suppressPush).removeBgavFromVersion(pomfile, nonBgavVersion);
-                    gitHandler.commit(git, nonBgavVersion + " - none BGAV - set correct none branched version");
+                    new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromVersion(pomfile, nonBgavVersion);
+                    gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched version", pomfile);
                     gottaPush=true;
                     if (failOnMissingBranchId || failOnAlteredPom) {
                         throw new MojoExecutionException("build failed due to new none branched version, new version pushed and committed.");
@@ -280,7 +283,7 @@ public class Plugin extends AbstractMojo {
                 }
 
                 if (parentMustBeRegarded && artifactMap.containsKey(model.getParent().getId())) {
-                    new XMLHandler(log, suppressCommit, suppressPush).removeBgavFromVersion(pomfile, nonBgavVersion);
+                    new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromVersion(pomfile, nonBgavVersion);
                 }
 
                 // remove non BGAV versions from dependencies
@@ -288,7 +291,7 @@ public class Plugin extends AbstractMojo {
                     String artifacts = mavenHandler.removeBgavFromPom(pomfile, model, namespace);
                     if (!artifacts.isEmpty()) {
                         log.debug("removed non BGAV versions from dependencies");
-                        gitHandler.commit(git, "removed BGAV from " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts));
+                        gitHandler.add(git, "removed BGAV from " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts),pomfile);
                         gottaPush=true;
                     } else {
                         log.debug("non BGAV dependencies have to removed");
@@ -309,7 +312,7 @@ public class Plugin extends AbstractMojo {
         if (modules != null && !modules.isEmpty()) {
             for (String module:modules) {
                 File subPom = new File(pomfile.getAbsoluteFile().getParentFile().getAbsolutePath()+"/"+module+"/pom.xml");
-                MavenHandler subHandler = new MavenHandler(log, suppressCommit, suppressPush);
+                MavenHandler subHandler = new MavenHandler(log, suppressCommit, suppressPush, baseDir);
                 Model subModel = mavenHandler.getModel(subPom);
                 gottaPush |= processPom(subPom, subHandler,subModel, gitHandler, git, branch, true, model.getId());
             }

@@ -31,17 +31,16 @@ public class MavenHandler {
     private final Log log;
     private final boolean suppressCommit;
     private final boolean suppressPush;
+    private final File baseDir;
+    private final XMLHandler xmlHandler;
 
-    public MavenHandler(boolean suppressCommit, boolean suppressPush) {
-        this.suppressCommit = suppressCommit;
-        this.suppressPush = suppressPush;
-        log = null;
-    }
 
-    public MavenHandler(Log log, boolean suppressCommit, boolean suppressPush) {
+    public MavenHandler(Log log, boolean suppressCommit, boolean suppressPush, File baseDir) {
         this.log = log;
         this.suppressCommit = suppressCommit;
         this.suppressPush = suppressPush;
+        this.baseDir = baseDir;
+        xmlHandler = new XMLHandler(log, suppressCommit, suppressPush, this);
     }
 
     /**
@@ -188,7 +187,7 @@ public class MavenHandler {
                                         artifact += artifactId + ", ";
                                         log.info("changed dep: " + dependency);
                                         //                                log.info("POM FILE: " + model.getPomFile());
-                                        new XMLHandler(log, suppressCommit, suppressPush).alterDependency(pomfile, artifactId, newVersion);
+                                        xmlHandler.alterDependency(pomfile, artifactId, newVersion);
                                     }
                                 } else {
                                     String resolvedVersion = resolveProperty(model, nativeVersion);
@@ -201,7 +200,7 @@ public class MavenHandler {
                                         artifact += artifactId + ", ";
                                         log.info("changed dep: " + dependency);
                                         //                                log.info("POM FILE: " + model.getPomFile());
-                                        new XMLHandler(log, suppressCommit, suppressPush).alterProperty(pomfile, unkey(nativeVersion), newVersion);
+                                        xmlHandler.alterProperty(pomfile, unkey(nativeVersion), newVersion);
                                     }
                                 }
                             }
@@ -247,7 +246,7 @@ public class MavenHandler {
                             dependency.setVersion(newPomDepVersion);
                             artifact += dependency.getArtifactId() + ", ";
                             try {
-                                new XMLHandler(log, suppressCommit, suppressPush).alterDependency(pomfile, dependency.getArtifactId(), newPomDepVersion);
+                                xmlHandler.alterDependency(pomfile, dependency.getArtifactId(), newPomDepVersion);
                             } catch (MojoExecutionException ex) {
                                 log.warn("could not write POM");
                             }
@@ -263,7 +262,7 @@ public class MavenHandler {
                             Object dummy = setProperty(model, version, newVersion);
                             artifact += dependency.getArtifactId() + ", ";
                             try {
-                                new XMLHandler(log, suppressCommit, suppressPush).alterProperty(pomfile, unkey(version), newVersion);
+                                xmlHandler.alterProperty(pomfile, unkey(version), newVersion);
                             } catch (MojoExecutionException ex) {
                                 log.warn("could not write POM");
                             }
@@ -309,7 +308,7 @@ public class MavenHandler {
      * @throws MojoExecutionException
      */
     private Boolean checkoutFromDependencyRepository(Dependency dependency, String dependencyScmUrl, String gituser, String gitpassword, String ticketId) throws MojoExecutionException, IOException {
-        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit, suppressPush);
+        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit, suppressPush, baseDir);
 
         // setup local temporary Directory for Git checkout
         FileHelper fileHelper = new FileHelper(log);
