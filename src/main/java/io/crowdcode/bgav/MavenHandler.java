@@ -86,7 +86,7 @@ public class MavenHandler {
             newPomVersion = pomVersion.substring(0, pomVersion.indexOf("-SNAPSHOT"));
             newPomVersion += "-" + ticketID + "-SNAPSHOT";
         } else {
-            newPomVersion = pomVersion + "-" + ticketID + "-SNAPSHOT";
+            newPomVersion = pomVersion + "-" + ticketID;
         }
         log.info("new POM Version: " + newPomVersion);
         return newPomVersion;
