@@ -48,14 +48,35 @@ public class XMLHandler {
     }
 
     /**
+     * read end write POM with XPAth, due to an error in MavenXpp3Writer
+     *
+     * @param pomfile
+     * @param ticketID
+     * @throws MojoExecutionException
+     */
+    public String getPomVersion(File pomfile, String ticketID, String expression) throws MojoExecutionException {
+        try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {
+            Document document = getDocument(fileInputStream);
+            XPath xPath = XPathFactory.newInstance().newXPath();
+            NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
+            String oldPomVersion = nodeList.item(0).getTextContent();
+            final String textContent = mavenHandler.determinePomVersion(oldPomVersion, ticketID);
+            return textContent;
+        } catch (Exception ex) {
+            log.error("IOException: " + ex);
+            throw new MojoExecutionException("could not read POM Version: " + ex);
+        }
+    }
+
+    /**
      * set a BGAV version the project version
      *
      * @param pomfile
      * @param ticketID
      * @throws MojoExecutionException
      */
-    void setBgavOnVersion(File pomfile, String ticketID) throws MojoExecutionException {
-        writeChangedPomWithXPath(pomfile,ticketID, "/project/version");
+    boolean setBgavOnVersion(File pomfile, String ticketID) throws MojoExecutionException {
+        return writeChangedPomWithXPath(pomfile,ticketID, "/project/version");
     }
 
     /**
@@ -65,9 +86,10 @@ public class XMLHandler {
      * @param ticketID
      * @throws MojoExecutionException
      */
-    void setBgavOnParentVersion(File pomfile, String ticketID) throws MojoExecutionException {
-        writeChangedPomWithXPath(pomfile,ticketID, "/project/parent/version");
+    boolean setBgavOnParentVersion(File pomfile, String ticketID) throws MojoExecutionException {
+        return writeChangedPomWithXPath(pomfile,ticketID, "/project/parent/version");
     }
+
 
     /**
      * read end write POM with XPAth, due to an error in MavenXpp3Writer
@@ -76,19 +98,25 @@ public class XMLHandler {
      * @param ticketID
      * @throws MojoExecutionException
      */
-    private void writeChangedPomWithXPath(File pomfile, String ticketID, String expression) throws MojoExecutionException {
+    private boolean writeChangedPomWithXPath(File pomfile, String ticketID, String expression) throws MojoExecutionException {
         try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {
             Document document = getDocument(fileInputStream);
             XPath xPath = XPathFactory.newInstance().newXPath();
             NodeList nodeList = (NodeList) xPath.compile(expression).evaluate(document, XPathConstants.NODESET);
             String oldPomVersion = nodeList.item(0).getTextContent();
-            final String textContent = mavenHandler.determinePomVersion(oldPomVersion, ticketID);
-            nodeList.item(0).setTextContent(textContent);
-            writePomFile(pomfile, document);
+            final String newVersion = mavenHandler.determinePomVersion(oldPomVersion, ticketID);
+            if (!oldPomVersion.equals(newVersion)) {
+                nodeList.item(0).setTextContent(newVersion);
+                writePomFile(pomfile, document);
+                return true;
+            } else {
+                log.debug("File "+pomfile.getAbsoluteFile()+" already has correct version");
+            }
         } catch (Exception ex) {
             log.error("IOException: " + ex);
             throw new MojoExecutionException("could not write POM: " + ex);
         }
+        return false;
     }
 
     /**
@@ -98,9 +126,9 @@ public class XMLHandler {
      * @param pomVersion
      * @throws MojoExecutionException
      */
-    void removeBgavFromVersion(File pomfile, String pomVersion) throws MojoExecutionException {
+    boolean removeBgavFromVersion(File pomfile, String pomVersion) throws MojoExecutionException {
         String location = "/project/version";
-        setVersionInPom(pomfile, location, pomVersion);
+        return setVersionInPom(pomfile, location, pomVersion);
     }
 
 
@@ -111,26 +139,31 @@ public class XMLHandler {
      * @param pomVersion
      * @throws MojoExecutionException
      */
-    void removeBgavFromParentVersion(File pomfile, String pomVersion) throws MojoExecutionException {
+    boolean removeBgavFromParentVersion(File pomfile, String pomVersion) throws MojoExecutionException {
         String location = "/project/parent/version";
-        setVersionInPom(pomfile, location, pomVersion);
+        return setVersionInPom(pomfile, location, pomVersion);
     }
 
-    void setVersionInPom(File pomfile, String location, String pomVersion) throws MojoExecutionException {
+    boolean setVersionInPom(File pomfile, String location, String pomVersion) throws MojoExecutionException {
         try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {
             Document document = getDocument(fileInputStream);
             XPath xPath = XPathFactory.newInstance().newXPath();
             NodeList nodeList = (NodeList) xPath.compile(location).evaluate(document, XPathConstants.NODESET);
-            nodeList.item(0).setTextContent(pomVersion);
-            writePomFile(pomfile, document);
+            if (pomVersion.equals(nodeList.item(0).getTextContent())) {
+                nodeList.item(0).setTextContent(pomVersion);
+                writePomFile(pomfile, document);
+                return true;
+            }
         } catch (Exception ex) {
             log.error("IOException: " + ex);
             throw new MojoExecutionException("could not write POM: " + ex);
         }
+        return false;
     }
 
 
-    void alterDependency(File pomfile, String artifact, String newVersion) throws MojoExecutionException {
+    boolean alterDependency(File pomfile, String artifact, String newVersion) throws MojoExecutionException {
+        boolean willWritePom = false;
         try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {
             Document document = getDocument(fileInputStream);
             XPath xPath = XPathFactory.newInstance().newXPath();
@@ -143,16 +176,22 @@ public class XMLHandler {
                     for (int j = 0; j < children.getLength(); j++) {
                         if (children.item(j).getNodeType() == Node.ELEMENT_NODE && children.item(j).getNodeName().equalsIgnoreCase("version")) {
                             String oldPomVersion = children.item(j).getTextContent();
-                            children.item(j).setTextContent(newVersion);
+                            if (!oldPomVersion.equals(newVersion)) {
+                                children.item(j).setTextContent(newVersion);
+                                willWritePom = true;
+                            }
                         }
                     }
                 }
             }
-            writePomFile(pomfile, document);
+            if (willWritePom) {
+                writePomFile(pomfile, document);
+            }
         } catch (Exception ex) {
             log.error("IOException: " + ex);
             throw new MojoExecutionException("could not write POM: " + ex);
         }
+        return willWritePom;
     }
 
 
@@ -161,7 +200,8 @@ public class XMLHandler {
         transformer.transform(new DOMSource(document), new StreamResult(pomfile));
     }
 
-    void alterProperty(File pomfile, String propertyName, String targetPomVersion) throws MojoExecutionException {
+    boolean alterProperty(File pomfile, String propertyName, String targetPomVersion) throws MojoExecutionException {
+        boolean willWritePom = false;
         try (final FileInputStream fileInputStream = new FileInputStream(pomfile)) {
             Document document = getDocument(fileInputStream);
             XPath xPath = XPathFactory.newInstance().newXPath();
@@ -175,15 +215,21 @@ public class XMLHandler {
                     // log.debug(child.getNodeName() + " -> " + child.getTextContent());
                     if (child.getNodeName().equals(propertyName)) {
                         log.info("found property: " + propertyName + ", change to version " + targetPomVersion);
-                        child.setTextContent(targetPomVersion);
+                        if (!targetPomVersion.equals(child.getTextContent())) {
+                            child.setTextContent(targetPomVersion);
+                            willWritePom = true;
+                        }
                     }
                 }
             }
-            writePomFile(pomfile, document);
+            if (willWritePom) {
+                writePomFile(pomfile, document);
+            }
         } catch (Exception ex) {
             log.error("IOException: " + ex);
             throw new MojoExecutionException("could not write POM: " + ex);
         }
+        return willWritePom;
     }
 
     private Document getDocument(FileInputStream fileInputStream) throws ParserConfigurationException, SAXException, IOException {

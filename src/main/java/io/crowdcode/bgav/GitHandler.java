@@ -4,6 +4,7 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
+import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.Status;
@@ -19,9 +20,7 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  *
@@ -43,7 +42,7 @@ public class GitHandler {
     private final boolean suppressPush;
     private final Log log;
 
-    private final List<String> commitMessages = new ArrayList<>();
+    private final Map<File, String> commitMessages = new HashMap<>();
     private final File baseDir;
 
 //    public GitHandler() {
@@ -169,12 +168,12 @@ public class GitHandler {
 
         if (!suppressCommit) {
             try {
-                CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
-                String relativePath = pom.getAbsolutePath().replace(baseDir.getAbsolutePath(),"").substring(1);
-                git.add().addFilepattern(relativePath).call();
-                // git.commit().setMessage(commitMessage).call();
-                if (!commitMessages.contains(commitMessage)) {
-                    commitMessages.add(commitMessage);
+                final AddCommand add = git.add();
+                add.addFilepattern("pom.xml");
+                add.call();
+                final File absoluteFile = pom.getAbsoluteFile();
+                if (!commitMessages.containsKey(absoluteFile)) {
+                    commitMessages.put(absoluteFile, commitMessage);
                 }
             } catch (GitAPIException ex) {
                 log.error("GitAPIException: " + ex);
@@ -187,7 +186,7 @@ public class GitHandler {
 
     void commitAndPush(Git git) throws GitAPIException {
         if (!suppressCommit) {
-            git.commit().setMessage(String.join("\n", commitMessages)).call();
+            git.commit().setMessage(String.join("\n", commitMessages.values())).call();
         }
         if (!suppressCommit && !suppressPush) {
             CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);

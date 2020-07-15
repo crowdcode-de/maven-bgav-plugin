@@ -223,14 +223,15 @@ public class Plugin extends AbstractMojo {
                 log.debug("ticketId: " + ticketId);
                 if (versionMustBeRegarded) {
                     // NCX-16 write new verion to POM
-                    new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnVersion(pomfile, ticketId);
-                    gitHandler.add(git, ticketId + " - BGAV - set correct branched version", pomfile);
-                    gottaPush=true;
-                    if (failOnMissingBranchId || failOnAlteredPom) {
-                        // NCX-26
-                        throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
-                    } else {
-                        log.debug("failOnMissingBranchId parameter is not set");
+                    if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnVersion(pomfile, ticketId)) {
+                        gitHandler.add(git, ticketId + " - BGAV - set correct branched version", pomfile);
+                        gottaPush = true;
+                        if (failOnMissingBranchId || failOnAlteredPom) {
+                            // NCX-26
+                            throw new MojoExecutionException("build failed due to missing branch id and failOnMissingBranchId parameter.");
+                        } else {
+                            log.debug("failOnMissingBranchId parameter is not set");
+                        }
                     }
                 } else if (ticketId.equals(pomTicketId)) {
                     // POM Version has TicketID
@@ -243,8 +244,10 @@ public class Plugin extends AbstractMojo {
                 }
 
                 if (parentMustBeRegarded && artifactMap.containsKey(model.getParent().getId())) {
-                    new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnParentVersion(pomfile, ticketId);
-                    gitHandler.add(git, ticketId + " - BGAV - set correct branched version",pomfile);
+                    if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnParentVersion(pomfile, ticketId)) {
+                        gitHandler.add(git, ticketId + " - BGAV - set correct branched version", pomfile);
+                        gottaPush = true;
+                    }
                 }
 
                 // NCX-36 check for affected GroupIds in dependencies
@@ -272,9 +275,10 @@ public class Plugin extends AbstractMojo {
                 String nonBgavVersion = mavenHandler.setNonBgavPomVersion(version);
                 if (!nonBgavVersion.equals(version)) {
                     log.debug("none BGAV - set correct none branched version to: " + nonBgavVersion);
-                    new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromVersion(pomfile, nonBgavVersion);
-                    gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched version", pomfile);
-                    gottaPush=true;
+                    if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromVersion(pomfile, nonBgavVersion)) {
+                        gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched version", pomfile);
+                        gottaPush = true;
+                    }
                     if (failOnMissingBranchId || failOnAlteredPom) {
                         throw new MojoExecutionException("build failed due to new none branched version, new version pushed and committed.");
                     }
@@ -283,7 +287,7 @@ public class Plugin extends AbstractMojo {
                 }
 
                 if (parentMustBeRegarded && artifactMap.containsKey(model.getParent().getId())) {
-                    new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromVersion(pomfile, nonBgavVersion);
+                    gottaPush=new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromVersion(pomfile, nonBgavVersion);
                 }
 
                 // remove non BGAV versions from dependencies
