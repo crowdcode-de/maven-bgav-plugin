@@ -76,8 +76,8 @@ public class MavenHandler {
         // check is dependency has wrong ticketId
         String ticketId = extractTicketId(pomVersion);
         log.info("found ticketId in dependency: " + ticketId);
-        if (ticketId != null && !ticketId.isEmpty()) { 
-            pomVersion = setNonBgavPomVersion(pomVersion);
+        if (ticketId != null && !ticketId.isEmpty()) {
+            pomVersion = determineNonBgavPomVersion(pomVersion);
             log.info("removed wrong ticketId from POM Version: " + pomVersion);
         }
         String newPomVersion = "";
@@ -93,8 +93,8 @@ public class MavenHandler {
         log.info("new POM Version: " + newPomVersion);
         return newPomVersion;
     }
-    
-    public String setNonBgavPomVersion(String pomVersion) {
+
+    public String determineNonBgavPomVersion(String pomVersion) {
         String newPomVersion = "";
         log.info("non BGAV POM Version: " + pomVersion);
         if (pomVersion.contains("-SNAPSHOT")) {
@@ -151,62 +151,67 @@ public class MavenHandler {
             for (String groupid : groupIds) {
                 if (dependency.getGroupId().contains(groupid)) {
                     String nativeVersion = dependency.getVersion();
-                    log.info("affected dependency found: " + dependency + " with " + nativeVersion);
-                    // @todo: check if branched version of dep exists
-                    // ->> get POM from dependency --> Git --> SCM --> getDatas
-                    Model dependencyModel = null;
-                    try {
-                        dependencyModel = getSCMfromPOM(model, dependency, localRepositoryPath);
-                    } catch (MojoExecutionException e) {
-                        log.warn("could not get POM file: " + e);
-                        return artifact;
-                    }
-                    // --> get POM from SCM from project POM file
-                    // get Git Project URI
+                    if (nativeVersion != null && !nativeVersion.trim().isEmpty()) {
+                        if (nativeVersion != null && !nativeVersion.trim().isEmpty())
+                            log.info("affected dependency found: " + dependency + " with version " + nativeVersion);
+                        // @todo: check if branched version of dep exists
+                        // ->> get POM from dependency --> Git --> SCM --> getDatas
+                        Model dependencyModel = null;
+                        try {
+                            dependencyModel = getSCMfromPOM(model, dependency, localRepositoryPath);
+                        } catch (MojoExecutionException e) {
+                            log.warn("could not get POM file: " + e);
+                            return artifact;
+                        }
+                        // --> get POM from SCM from project POM file
+                        // get Git Project URI
 
-                    if (dependencyModel.getScm() != null) {
-                        String dependencyScmUrl = dependencyModel.getScm().getUrl();
-                        String artifactId = dependency.getArtifactId();
-                        if (dependencyScmUrl == null || dependencyScmUrl.isEmpty()) {
-                            if (!dependencyModel.getScm().getConnection().isEmpty()) {
-                                log.info("Dependency SCM entries found");
-                            }
-                            log.warn("no SCM URL for affected dependency found, please add <url></url> tag to " +
-                                    artifactId + "/" + nativeVersion + " POM file - skipping");
-                        } else {
-                            log.info("Dependency SCM URL found: " + dependencyScmUrl);
-                            if (checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId)) {
-                                //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
-                                if (!isPlaceholder(nativeVersion)) {
-                                    log.info("want to change: " + nativeVersion + " -- " + ticketId);
-                                    String newVersion = determinePomVersion(nativeVersion, ticketId);
-                                    if (nativeVersion.contains(ticketId)) {
-                                        log.info("POM contains ticketId - do nothing");
+                        if (dependencyModel.getScm() != null) {
+                            String dependencyScmUrl = dependencyModel.getScm().getUrl();
+                            String artifactId = dependency.getArtifactId();
+                            if (dependencyScmUrl == null || dependencyScmUrl.isEmpty()) {
+                                if (!dependencyModel.getScm().getConnection().isEmpty()) {
+                                    log.info("Dependency SCM entries found");
+                                }
+                                log.warn("no SCM URL for affected dependency found, please add <url></url> tag to " +
+                                        artifactId + "/" + nativeVersion + " POM file - skipping");
+                            } else {
+                                log.info("Dependency SCM URL found: " + dependencyScmUrl);
+                                if (checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId)) {
+                                    //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
+                                    if (!isPlaceholder(nativeVersion)) {
+                                        log.info("want to change: " + nativeVersion + " -- " + ticketId);
+                                        String newVersion = determinePomVersion(nativeVersion, ticketId);
+                                        if (nativeVersion.contains(ticketId)) {
+                                            log.info("POM contains ticketId - do nothing");
+                                        } else {
+                                            dependency.setVersion(determinePomVersion(nativeVersion, ticketId));
+                                            artifact += artifactId + ", ";
+                                            log.info("changed dep: " + dependency);
+                                            //                                log.info("POM FILE: " + model.getPomFile());
+                                            xmlHandler.alterDependency(pomfile, artifactId, newVersion);
+                                        }
                                     } else {
-                                        dependency.setVersion(determinePomVersion(nativeVersion, ticketId));
-                                        artifact += artifactId + ", ";
-                                        log.info("changed dep: " + dependency);
-                                        //                                log.info("POM FILE: " + model.getPomFile());
-                                        xmlHandler.alterDependency(pomfile, artifactId, newVersion);
-                                    }
-                                } else {
-                                    String resolvedVersion = resolveProperty(model, nativeVersion);
-                                    log.info("want to change placeholder: " + nativeVersion + " (" + resolvedVersion + ") -- " + ticketId);
-                                    if (resolvedVersion.contains(ticketId)) {
-                                        log.info("POM contains ticketId - do nothing");
-                                    } else {
-                                        String newVersion = determinePomVersion(resolvedVersion, ticketId);
-                                        setProperty(model, nativeVersion, newVersion);
-                                        artifact += artifactId + ", ";
-                                        log.info("changed dep: " + dependency);
-                                        //                                log.info("POM FILE: " + model.getPomFile());
-                                        xmlHandler.alterProperty(pomfile, unkey(nativeVersion), newVersion);
+                                        String resolvedVersion = resolveProperty(model, nativeVersion);
+                                        log.info("want to change placeholder: " + nativeVersion + " (" + resolvedVersion + ") -- " + ticketId);
+                                        if (resolvedVersion.contains(ticketId)) {
+                                            log.info("POM contains ticketId - do nothing");
+                                        } else {
+                                            String newVersion = determinePomVersion(resolvedVersion, ticketId);
+                                            setProperty(model, nativeVersion, newVersion);
+                                            artifact += artifactId + ", ";
+                                            log.info("changed dep: " + dependency);
+                                            //                                log.info("POM FILE: " + model.getPomFile());
+                                            xmlHandler.alterProperty(pomfile, unkey(nativeVersion), newVersion);
+                                        }
                                     }
                                 }
                             }
+                        } else {
+                            log.info(dependency.getGroupId() + ":" + dependency.getArtifactId() + ":" + dependency.getVersion() + " has no SCM configured");
                         }
-                    } else  {
-                        log.info(dependency.getGroupId()+":"+dependency.getArtifactId()+":"+dependency.getVersion()+" has no SCM configured");
+                    } else {
+                        log.debug("Dependency "+dependency+" skipped due to no version.");
                     }
                 }
             }
@@ -238,37 +243,41 @@ public class MavenHandler {
                     // @todo: check if branched version of dep exists
                     // ->> get POM from dependency --> Git --> SCM --> getDatas
 
-                    if (!isPlaceholder(version)) {
-                        String ticketId = extractTicketId(version);
-                        if (ticketId != null && !ticketId.isEmpty()) {
-                            log.info("dependency contains ticketId - remove it: " + ticketId);
-                            String newPomDepVersion = setNonBgavPomVersion(version);
-                            dependency.setVersion(newPomDepVersion);
-                            artifact += dependency.getArtifactId() + ", ";
-                            try {
-                                xmlHandler.alterDependency(pomfile, dependency.getArtifactId(), newPomDepVersion);
-                            } catch (MojoExecutionException ex) {
-                                log.warn("could not write POM");
+                    if (version != null && !version.trim().isEmpty()){
+                        if (!isPlaceholder(version)) {
+                            String ticketId = extractTicketId(version);
+                            if (ticketId != null && !ticketId.isEmpty()) {
+                                log.info("dependency contains ticketId - remove it: " + ticketId);
+                                String newPomDepVersion = determineNonBgavPomVersion(version);
+                                dependency.setVersion(newPomDepVersion);
+                                artifact += dependency.getArtifactId() + ", ";
+                                try {
+                                    xmlHandler.alterDependency(pomfile, dependency.getArtifactId(), newPomDepVersion);
+                                } catch (MojoExecutionException ex) {
+                                    log.warn("could not write POM");
+                                }
+                            } else {
+                                log.info("dependency has no BGAV version");
                             }
                         } else {
-                            log.info("dependency has no BGAV version");
+                            String property = resolveProperty(model, version);
+                            String ticketId = extractTicketId(property);
+                            if (ticketId != null && !ticketId.isEmpty()) {
+                                log.info("property " + version + " contains ticketId - remove it: " + ticketId);
+                                String newVersion = determineNonBgavPomVersion(property);
+                                Object dummy = setProperty(model, version, newVersion);
+                                artifact += dependency.getArtifactId() + ", ";
+                                try {
+                                    xmlHandler.alterProperty(pomfile, unkey(version), newVersion);
+                                } catch (MojoExecutionException ex) {
+                                    log.warn("could not write POM");
+                                }
+                            } else {
+                                log.info("dependency has no BGAV version");
+                            }
                         }
                     } else {
-                        String property = resolveProperty(model, version);
-                        String ticketId = extractTicketId(property);
-                        if (ticketId != null && !ticketId.isEmpty()) {
-                            log.info("property " + version + " contains ticketId - remove it: " + ticketId);
-                            String newVersion = setNonBgavPomVersion(property);
-                            Object dummy = setProperty(model, version, newVersion);
-                            artifact += dependency.getArtifactId() + ", ";
-                            try {
-                                xmlHandler.alterProperty(pomfile, unkey(version), newVersion);
-                            } catch (MojoExecutionException ex) {
-                                log.warn("could not write POM");
-                            }
-                        } else {
-                            log.info("dependency has no BGAV version");
-                        }
+                        log.debug("dependency "+ dependency+ " skipped due to missing version.");
                     }
                 }
             }

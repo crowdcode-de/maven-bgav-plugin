@@ -149,7 +149,7 @@ public class XMLHandler {
             Document document = getDocument(fileInputStream);
             XPath xPath = XPathFactory.newInstance().newXPath();
             NodeList nodeList = (NodeList) xPath.compile(location).evaluate(document, XPathConstants.NODESET);
-            if (pomVersion.equals(nodeList.item(0).getTextContent())) {
+            if (!pomVersion.equals(nodeList.item(0).getTextContent())) {
                 nodeList.item(0).setTextContent(pomVersion);
                 writePomFile(pomfile, document);
                 return true;

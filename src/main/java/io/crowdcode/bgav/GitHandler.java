@@ -173,7 +173,7 @@ public class GitHandler {
                 add.call();
                 final File absoluteFile = pom.getAbsoluteFile();
                 if (!commitMessages.containsKey(absoluteFile)) {
-                    commitMessages.put(absoluteFile, commitMessage);
+                    commitMessages.put(absoluteFile, commitMessage+" @ "+pom.getAbsolutePath().replace(baseDir.getAbsolutePath(),""));
                 }
             } catch (GitAPIException ex) {
                 log.error("GitAPIException: " + ex);
@@ -186,6 +186,10 @@ public class GitHandler {
 
     void commitAndPush(Git git) throws GitAPIException {
         if (!suppressCommit) {
+            final AddCommand add = git.add();
+            add.addFilepattern(".");
+            add.call();
+
             git.commit().setMessage(String.join("\n", commitMessages.values())).call();
         }
         if (!suppressCommit && !suppressPush) {

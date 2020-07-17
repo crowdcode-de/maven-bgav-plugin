@@ -194,14 +194,16 @@ public class Plugin extends AbstractMojo {
         if (branch == null) {
             throw new MojoExecutionException("could not get Git branch");
         } else {
-            final String version = model.getVersion();
             final String parentVersion = model.getParent() != null ? model.getParent().getVersion() : "";
+            final String version = model.getVersion();
+            final String nonNullVersion = version != null ? version : parentVersion ;
+
             final boolean parentMustBeRegarded= model.getParent() != null && model.getParent().getVersion() != null;
             final boolean versionMustBeRegarded= version != null;
             if (checkForAllowedBgavBranch(branch)) {
                 log.debug("running BGAV branch");
                 // NCX-14 check for feature branch
-                log.debug("POM Version: " + version);
+                log.debug("POM Version: " + nonNullVersion);
                 final String regexTicket;
 
                 if (regex_ticket == null || regex_ticket.isEmpty()) {
@@ -213,7 +215,7 @@ public class Plugin extends AbstractMojo {
                 }
 
                 if (versionMustBeRegarded) {
-                    pomTicketId = getMatchFirst(version, regexTicket);
+                    pomTicketId = getMatchFirst(nonNullVersion, regexTicket);
                 } else {
                     pomTicketId = getMatchFirst(parentVersion, regexTicket);;
                 }
@@ -263,17 +265,17 @@ public class Plugin extends AbstractMojo {
             } else if (checkForAllowedNonBgavBranch(branch)) {
                 log.debug("running non BGAV branch");
                 // remove BGAV from POM
-                log.debug("POM Version: " + version);
+                log.debug("POM Version: " + nonNullVersion);
                 if (regex_ticket == null || regex_ticket.isEmpty()) {
                     log.debug("RegEx for ticket ID is empty, use default one: " + REGEX_TICKET);
-                    ticketId = getMatchFirst(version, REGEX_TICKET);
+                    ticketId = getMatchFirst(nonNullVersion, REGEX_TICKET);
                 } else {
                     log.debug("use provided RegEx for ticket ID: " + regex_ticket);
-                    ticketId = getMatchFirst(version, regex_ticket);
+                    ticketId = getMatchFirst(nonNullVersion, regex_ticket);
                 }
-                log.debug("branched version found: " + ticketId);
-                String nonBgavVersion = mavenHandler.setNonBgavPomVersion(version);
-                if (!nonBgavVersion.equals(version)) {
+                log.debug("branched nonNullVersion found: " + ticketId);
+                String nonBgavVersion = mavenHandler.determineNonBgavPomVersion(nonNullVersion);
+                if (versionMustBeRegarded && !nonBgavVersion.equals(version)) {
                     log.debug("none BGAV - set correct none branched version to: " + nonBgavVersion);
                     if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromVersion(pomfile, nonBgavVersion)) {
                         gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched version", pomfile);
@@ -286,8 +288,11 @@ public class Plugin extends AbstractMojo {
                     log.debug("no BGAV information inside POM Version.");
                 }
 
-                if (parentMustBeRegarded && artifactMap.containsKey(model.getParent().getId())) {
-                    gottaPush=new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromVersion(pomfile, nonBgavVersion);
+                if (parentMustBeRegarded) {
+                    if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromParentVersion(pomfile, nonBgavVersion)) {
+                        gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched parent version", pomfile);
+                        gottaPush = true;
+                    }
                 }
 
                 // remove non BGAV versions from dependencies
@@ -303,7 +308,7 @@ public class Plugin extends AbstractMojo {
                 } catch (MojoExecutionException ex) {
                     throw new MojoExecutionException("could not check for dependencies: " + ex);
                 }
-                // TODO: remove BGAV version from parent
+                // TODO: remove BGAV nonNullVersion from parent
             } else {
                 log.warn("no Git known branch");
             }
