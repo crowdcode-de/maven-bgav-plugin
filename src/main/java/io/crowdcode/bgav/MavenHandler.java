@@ -133,8 +133,7 @@ public class MavenHandler {
             log.info("no group id(s) defined ... finished.");
             return "";
         }
-        log.info("checking dependencies for affected group id(s)...");
-        final DistributionManagement distributionManagement = model.getDistributionManagement();
+        final DistributionManagement distributionManagement = getDistributionManagement(pomfile, model);
 
         if (distributionManagement == null || distributionManagement.getSnapshotRepository() == null) {
             log.warn("============================== MISSING DISTRIBUTION MANAGEMENT! ==============================");
@@ -217,6 +216,19 @@ public class MavenHandler {
             }
         }
         return artifact;
+    }
+
+    private DistributionManagement getDistributionManagement(File pomfile, Model model) throws MojoExecutionException {
+        log.info("checking dependencies for affected group id(s)...");
+        final DistributionManagement distributionManagement = model.getDistributionManagement();
+        if (distributionManagement == null && model.getParent() != null) {
+            Model parentModel = getModel(new File(pomfile.getAbsoluteFile().getParentFile()+"/"+ model.getParent().getRelativePath()));
+            if (parentModel != null) {
+                return getDistributionManagement(pomfile, parentModel);
+            }
+        }
+
+        return distributionManagement;
     }
 
     /**
