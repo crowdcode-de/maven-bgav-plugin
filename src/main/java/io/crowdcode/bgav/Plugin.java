@@ -200,6 +200,19 @@ public class Plugin extends AbstractMojo {
 
             final boolean parentMustBeRegarded= model.getParent() != null && model.getParent().getVersion() != null;
             final boolean versionMustBeRegarded= version != null;
+
+            artifactMap.put(model.getId(), model);
+
+            final List<String> modules = model.getModules();
+            if (modules != null && !modules.isEmpty()) {
+                for (String module:modules) {
+                    File subPom = new File(pomfile.getAbsoluteFile().getParentFile().getAbsolutePath()+"/"+module+"/pom.xml");
+                    MavenHandler subHandler = new MavenHandler(log, suppressCommit, suppressPush, baseDir);
+                    Model subModel = mavenHandler.getModel(subPom);
+                    gottaPush |= processPom(subPom, subHandler,subModel, gitHandler, git, branch, true, model.getId());
+                }
+            }
+
             if (checkForAllowedBgavBranch(branch)) {
                 log.debug("running BGAV branch");
                 // NCX-14 check for feature branch
@@ -246,6 +259,7 @@ public class Plugin extends AbstractMojo {
                 }
 
                 if (parentMustBeRegarded && artifactMap.containsKey(model.getParent().getId())) {
+                    // HIER
                     if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnParentVersion(pomfile, ticketId)) {
                         gitHandler.add(git, ticketId + " - BGAV - set correct branched version", pomfile);
                         gottaPush = true;
@@ -289,9 +303,11 @@ public class Plugin extends AbstractMojo {
                 }
 
                 if (parentMustBeRegarded) {
-                    if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromParentVersion(pomfile, nonBgavVersion)) {
-                        gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched parent version", pomfile);
-                        gottaPush = true;
+                    if (artifactMap.containsKey(parentID)) {
+                        if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromParentVersion(pomfile, nonBgavVersion)) {
+                            gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched parent version", pomfile);
+                            gottaPush = true;
+                        }
                     }
                 }
 
@@ -317,15 +333,6 @@ public class Plugin extends AbstractMojo {
         Model alteredModel = mavenHandler.getModel(pomfile);
         artifactMap.put(model.getId(), alteredModel);
 
-        final List<String> modules = model.getModules();
-        if (modules != null && !modules.isEmpty()) {
-            for (String module:modules) {
-                File subPom = new File(pomfile.getAbsoluteFile().getParentFile().getAbsolutePath()+"/"+module+"/pom.xml");
-                MavenHandler subHandler = new MavenHandler(log, suppressCommit, suppressPush, baseDir);
-                Model subModel = mavenHandler.getModel(subPom);
-                gottaPush |= processPom(subPom, subHandler,subModel, gitHandler, git, branch, true, model.getId());
-            }
-        }
         return gottaPush;
     }
 
