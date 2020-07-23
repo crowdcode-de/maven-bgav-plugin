@@ -28,21 +28,21 @@ public class PluginTest {
     @Test(expected = MojoExecutionException.class)
     public void testGetModel() throws MojoExecutionException {
         Plugin plugin = new Plugin();
-        MavenHandler mavenHandler = new MavenHandler(plugin.getLogs(), false, suppressPush, baseDir);
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLogs(), false, suppressPush, baseDir, null, null, null, null);
         mavenHandler.getModel(new File(UUID.randomUUID().toString()));
     }
 
     @Test
     public void testGetModel2() throws MojoExecutionException {
         Plugin plugin = new Plugin();
-        MavenHandler mavenHandler = new MavenHandler(plugin.getLogs(), false, suppressPush, baseDir);
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLogs(), false, suppressPush, baseDir, null, null, null, null);
         mavenHandler.getModel(new File("pom.xml"));
     }
 
     @Test
     public void testGetGitRepo() throws MojoExecutionException {
         Plugin plugin = new Plugin();
-        MavenHandler mavenHandler = new MavenHandler(plugin.getLogs(), false, suppressPush, baseDir);
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLogs(), false, suppressPush, baseDir, null, null, null, null);
         Model model = mavenHandler.getModel(new File("pom.xml"));
         GitHandler gitHandler = new GitHandler(false, suppressPush, plugin.getLog(), baseDir);
         Git git = gitHandler.getGitLocalRepo(model);
@@ -74,18 +74,18 @@ public class PluginTest {
     @Test
     public void testSetPomVersion() {
         Plugin plugin = new Plugin();
-        MavenHandler mavenHandler = new MavenHandler(plugin.getLog(), false, suppressPush, baseDir);
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLog(), false, suppressPush, baseDir, null, null, null, null);
         assertEquals(mavenHandler.determinePomVersion("1.0.1-SNAPSHOT", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
         assertEquals(mavenHandler.determinePomVersion("1.0.1-SNAPSHOT", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
         assertEquals(mavenHandler.determinePomVersion("1.0.1-SNAPSHOT", "HSMRT-50"), "1.0.1-HSMRT-50-SNAPSHOT");
-        assertEquals(mavenHandler.determinePomVersion("1.0.1", "NCX-11"), "1.0.1-NCX-11-SNAPSHOT");
-        assertEquals(mavenHandler.determinePomVersion("1.0.1", "NCX-7"), "1.0.1-NCX-7-SNAPSHOT");
+        assertEquals(mavenHandler.determinePomVersion("1.0.1", "NCX-11"), "1.0.1-NCX-11");
+        assertEquals(mavenHandler.determinePomVersion("1.0.1", "NCX-7"), "1.0.1-NCX-7");
     }
 
     @Test
     public void testRemovePomVerion() {
         Plugin plugin = new Plugin();
-        MavenHandler mavenHandler = new MavenHandler(plugin.getLog(), false, suppressPush, baseDir);
+        MavenHandler mavenHandler = new MavenHandler(plugin.getLog(), false, suppressPush, baseDir, null, null, null, null);
         assertEquals(mavenHandler.determineNonBgavPomVersion("1.0.1-NCX-11-SNAPSHOT"), "1.0.1-SNAPSHOT");
         assertEquals(mavenHandler.determineNonBgavPomVersion("1.0.1-HSMRT-50-SNAPSHOT"), "1.0.1-SNAPSHOT");
         assertEquals(mavenHandler.determineNonBgavPomVersion("1.0.1-NCX-11"), "1.0.1");

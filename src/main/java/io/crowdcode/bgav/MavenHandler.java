@@ -1,5 +1,7 @@
 package io.crowdcode.bgav;
 
+import org.apache.maven.artifact.Artifact;
+import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.model.Dependency;
 import org.apache.maven.model.DeploymentRepository;
 import org.apache.maven.model.DistributionManagement;
@@ -7,6 +9,10 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
+import org.apache.maven.project.MavenProject;
+import org.apache.maven.project.MavenProjectBuilder;
+import org.apache.maven.project.ProjectBuildingException;
+import org.apache.maven.repository.RepositorySystem;
 import org.apache.maven.settings.Settings;
 import org.apache.maven.settings.io.xpp3.SettingsXpp3Reader;
 import org.apache.maven.shared.utils.ReaderFactory;
@@ -17,7 +23,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -33,13 +41,21 @@ public class MavenHandler {
     private final boolean suppressPush;
     private final File baseDir;
     private final XMLHandler xmlHandler;
+    private final RepositorySystem repositorySystem;
+    private final MavenProjectBuilder mavenProjectBuilder;
+    private final List<ArtifactRepository> remoteRepositories;
+    private final ArtifactRepository localRepository;
+    private static final Map<String, DistributionManagement> distributionMap = new HashMap<>();
 
-
-    public MavenHandler(Log log, boolean suppressCommit, boolean suppressPush, File baseDir) {
+    public MavenHandler(Log log, boolean suppressCommit, boolean suppressPush, File baseDir, RepositorySystem repositorySystem, MavenProjectBuilder mavenProjectBuilder, List<ArtifactRepository> remoteRepositories, ArtifactRepository localRepository) {
         this.log = log;
         this.suppressCommit = suppressCommit;
         this.suppressPush = suppressPush;
         this.baseDir = baseDir;
+        this.repositorySystem = repositorySystem;
+        this.mavenProjectBuilder = mavenProjectBuilder;
+        this.remoteRepositories = remoteRepositories;
+        this.localRepository = localRepository;
         xmlHandler = new XMLHandler(log, suppressCommit, suppressPush, this);
     }
 
@@ -220,16 +236,37 @@ public class MavenHandler {
 
     private DistributionManagement getDistributionManagement(File pomfile, Model model) throws MojoExecutionException {
         log.info("checking dependencies for affected group id(s)...");
-        final DistributionManagement distributionManagement = model.getDistributionManagement();
+        DistributionManagement distributionManagement = model.getDistributionManagement();
         if (distributionManagement == null && model.getParent() != null) {
-            Model parentModel = getModel(new File(pomfile.getAbsoluteFile().getParentFile()+"/"+ model.getParent().getRelativePath()));
-            if (parentModel != null) {
-                return getDistributionManagement(pomfile, parentModel);
+            if (distributionMap.containsKey(model.getParent().getId())) {
+                distributionManagement =  distributionMap.get(model.getParent().getId());
+            } else {
+                final File parentPomFile = new File(pomfile.getAbsoluteFile().getParentFile() + "/" + model.getParent().getRelativePath());
+                if (parentPomFile.exists() && parentPomFile.isFile() && !parentPomFile.isDirectory()) {
+                    Model parentModel = getModel(parentPomFile);
+                    distributionManagement = getDistributionManagement(parentPomFile, parentModel);
+                }
+                if (distributionManagement == null) {
+                    try {
+                        final String groupId = model.getGroupId() != null ? model.getGroupId() : model.getParent().getGroupId();
+                        final String version = model.getVersion() != null ? model.getVersion() : model.getParent().getVersion();
+
+                        final MavenProject mavenProject = resolveProject(groupId, model.getArtifactId(), version);
+                        distributionManagement = mavenProject.getDistributionManagement();
+                    } catch (ProjectBuildingException e) {
+                        throw new MojoExecutionException(e.getMessage(), e);
+                    }
+                }
             }
         }
 
+        distributionMap.put(model.getId(), distributionManagement);
+
         return distributionManagement;
     }
+
+
+
 
     /**
      * remove BGAV from dependencies
@@ -405,4 +442,12 @@ public class MavenHandler {
         }
         return match;
     }
+
+    public MavenProject resolveProject(String groupId, String artifactId, String version) throws ProjectBuildingException {
+        Artifact pomArtifact = repositorySystem.createProjectArtifact(groupId, artifactId, version);
+        MavenProject project = mavenProjectBuilder.buildFromRepository(pomArtifact
+                , remoteRepositories, localRepository);
+        return project;
+    }
+
 }
