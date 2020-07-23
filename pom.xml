@@ -56,8 +56,8 @@
     </organization>
 
     <scm>
-        <connection>scm:git:https://github.com/crowdcode-de/maven-bgav-plugin.git</connection>
-        <developerConnection>scm:svn:https://github.com/crowdcode-de/maven-bgav-plugin.git</developerConnection>
+        <connection>scm:git:https://github.com/crowdcode-de/maven-bgav-plugin/</connection>
+        <developerConnection>scm:svn:https://github.com/crowdcode-de/maven-bgav-plugin</developerConnection>
         <url>https://github.com/crowdcode-de/maven-bgav-plugin</url>
     </scm>
 

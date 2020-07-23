@@ -2,10 +2,7 @@ package io.crowdcode.bgav;
 
 import org.apache.maven.artifact.Artifact;
 import org.apache.maven.artifact.repository.ArtifactRepository;
-import org.apache.maven.model.Dependency;
-import org.apache.maven.model.DeploymentRepository;
-import org.apache.maven.model.DistributionManagement;
-import org.apache.maven.model.Model;
+import org.apache.maven.model.*;
 import org.apache.maven.model.io.xpp3.MavenXpp3Reader;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
@@ -23,9 +20,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -46,6 +41,17 @@ public class MavenHandler {
     private final List<ArtifactRepository> remoteRepositories;
     private final ArtifactRepository localRepository;
     private static final Map<String, DistributionManagement> distributionMap = new HashMap<>();
+    private static final Map<String, Scm> scmMap = new HashMap<>();
+
+    private class CheckOutDependency{
+        public final File checkoutDir;
+        public final Boolean hasBranch;
+
+        public CheckOutDependency(File checkoutDir, Boolean hasBranch) {
+            this.checkoutDir = checkoutDir;
+            this.hasBranch = hasBranch;
+        }
+    }
 
     public MavenHandler(Log log, boolean suppressCommit, boolean suppressPush, File baseDir, RepositorySystem repositorySystem, MavenProjectBuilder mavenProjectBuilder, List<ArtifactRepository> remoteRepositories, ArtifactRepository localRepository) {
         this.log = log;
@@ -171,9 +177,9 @@ public class MavenHandler {
                             log.info("affected dependency found: " + dependency + " with version " + nativeVersion);
                         // @todo: check if branched version of dep exists
                         // ->> get POM from dependency --> Git --> SCM --> getDatas
-                        Model dependencyModel = null;
+                        MavenProject dependentProject = null;
                         try {
-                            dependencyModel = getSCMfromPOM(model, dependency, localRepositoryPath);
+                            dependentProject = getSCMfromPOM(model, dependency, localRepositoryPath);
                         } catch (MojoExecutionException e) {
                             log.warn("could not get POM file: " + e);
                             return artifact;
@@ -181,45 +187,52 @@ public class MavenHandler {
                         // --> get POM from SCM from project POM file
                         // get Git Project URI
 
-                        if (dependencyModel.getScm() != null) {
-                            String dependencyScmUrl = dependencyModel.getScm().getUrl();
+                        final Scm scm = getScm(dependentProject.getModel());
+                        if (scm != null) {
+                            String dependencyScmUrl = scm.getUrl();
                             String artifactId = dependency.getArtifactId();
                             if (dependencyScmUrl == null || dependencyScmUrl.isEmpty()) {
-                                if (!dependencyModel.getScm().getConnection().isEmpty()) {
+                                if (!scm.getConnection().isEmpty()) {
                                     log.info("Dependency SCM entries found");
                                 }
                                 log.warn("no SCM URL for affected dependency found, please add <url></url> tag to " +
                                         artifactId + "/" + nativeVersion + " POM file - skipping");
                             } else {
                                 log.info("Dependency SCM URL found: " + dependencyScmUrl);
-                                if (checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId)) {
-                                    //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
-                                    if (!isPlaceholder(nativeVersion)) {
-                                        log.info("want to change: " + nativeVersion + " -- " + ticketId);
-                                        String newVersion = determinePomVersion(nativeVersion, ticketId);
-                                        if (nativeVersion.contains(ticketId)) {
-                                            log.info("POM contains ticketId - do nothing");
+                                final CheckOutDependency checkOutDependency = checkoutFromDependencyRepository(dependency, dependencyScmUrl, gituser, gitpassword, ticketId);
+                                try {
+                                    if (checkOutDependency.hasBranch) {
+                                        //@todo: commit and push changes --> throw an error --> Jenkins build will start again, or trigger the build manual again
+                                        if (!isPlaceholder(nativeVersion)) {
+                                            final Model checkedOutModel = getModel(new File(checkOutDependency.checkoutDir + "/pom.xml"));
+                                            log.info("want to change: " + nativeVersion + " -- " + ticketId);
+                                            String newVersion = determinePomVersion(checkedOutModel.getVersion(), ticketId);
+                                            if (nativeVersion.contains(ticketId)) {
+                                                log.info("POM contains ticketId - do nothing");
+                                            } else {
+                                                dependency.setVersion(determinePomVersion(nativeVersion, ticketId));
+                                                artifact += artifactId + ", ";
+                                                log.info("changed dep: " + dependency);
+                                                //                                log.info("POM FILE: " + model.getPomFile());
+                                                xmlHandler.alterDependency(pomfile, artifactId, newVersion);
+                                            }
                                         } else {
-                                            dependency.setVersion(determinePomVersion(nativeVersion, ticketId));
-                                            artifact += artifactId + ", ";
-                                            log.info("changed dep: " + dependency);
-                                            //                                log.info("POM FILE: " + model.getPomFile());
-                                            xmlHandler.alterDependency(pomfile, artifactId, newVersion);
-                                        }
-                                    } else {
-                                        String resolvedVersion = resolveProperty(model, nativeVersion);
-                                        log.info("want to change placeholder: " + nativeVersion + " (" + resolvedVersion + ") -- " + ticketId);
-                                        if (resolvedVersion.contains(ticketId)) {
-                                            log.info("POM contains ticketId - do nothing");
-                                        } else {
-                                            String newVersion = determinePomVersion(resolvedVersion, ticketId);
-                                            setProperty(model, nativeVersion, newVersion);
-                                            artifact += artifactId + ", ";
-                                            log.info("changed dep: " + dependency);
-                                            //                                log.info("POM FILE: " + model.getPomFile());
-                                            xmlHandler.alterProperty(pomfile, unkey(nativeVersion), newVersion);
+                                            String resolvedVersion = resolveProperty(model, nativeVersion);
+                                            log.info("want to change placeholder: " + nativeVersion + " (" + resolvedVersion + ") -- " + ticketId);
+                                            if (resolvedVersion.contains(ticketId)) {
+                                                log.info("POM contains ticketId - do nothing");
+                                            } else {
+                                                String newVersion = determinePomVersion(resolvedVersion, ticketId);
+                                                setProperty(model, nativeVersion, newVersion);
+                                                artifact += artifactId + ", ";
+                                                log.info("changed dep: " + dependency);
+                                                //                                log.info("POM FILE: " + model.getPomFile());
+                                                xmlHandler.alterProperty(pomfile, unkey(nativeVersion), newVersion);
+                                            }
                                         }
                                     }
+                                } finally {
+                                    new FileHelper(log).deleteTempGitCheckoutDirectory(checkOutDependency.checkoutDir);
                                 }
                             }
                         } else {
@@ -265,6 +278,30 @@ public class MavenHandler {
         return distributionManagement;
     }
 
+
+    private Scm getScm(Model model) throws MojoExecutionException {
+        log.info("checking dependencies for affected group id(s)...");
+        Scm scm = model.getScm();
+        if (scm == null && model.getParent() != null) {
+            if (scmMap.containsKey(model.getParent().getId())) {
+                scm =  scmMap.get(model.getParent().getId());
+            } else {
+                try {
+                    final String groupId = model.getGroupId() != null ? model.getGroupId() : model.getParent().getGroupId();
+                    final String version = model.getVersion() != null ? model.getVersion() : model.getParent().getVersion();
+
+                    final MavenProject mavenProject = resolveProject(groupId, model.getArtifactId(), version);
+                    scm = mavenProject.getScm();
+                } catch (ProjectBuildingException e) {
+                    throw new MojoExecutionException(e.getMessage(), e);
+                }
+            }
+        }
+
+        scmMap.put(model.getId(), scm);
+
+        return scm;
+    }
 
 
 
@@ -348,10 +385,14 @@ public class MavenHandler {
      * @return Model
      * @throws MojoExecutionException
      */
-    private Model getSCMfromPOM(Model model, Dependency dependency, String localRepositoryPath) throws MojoExecutionException {
-        File pomfile = new FileHelper(log).getPOMFilePathFromDependency(model, dependency, localRepositoryPath);
-        log.info("POM File from " + dependency.getArtifactId() + ": " + pomfile);
-        return getModel(pomfile);
+    private MavenProject getSCMfromPOM(Model model, Dependency dependency, String localRepositoryPath) throws MojoExecutionException {
+        // File pomfile = new FileHelper(log).getPOMFilePathFromDependency(model, dependency, localRepositoryPath);
+        log.info("Resolviong " + dependency.getArtifactId());
+        try {
+            return resolveProject(dependency.getGroupId(), dependency.getArtifactId(), dependency.getVersion());
+        } catch (ProjectBuildingException e) {
+            throw new MojoExecutionException(e.getMessage(), e);
+        }
     }
 
     /**
@@ -365,48 +406,30 @@ public class MavenHandler {
      * @return branchFound
      * @throws MojoExecutionException
      */
-    private Boolean checkoutFromDependencyRepository(Dependency dependency, String dependencyScmUrl, String gituser, String gitpassword, String ticketId) throws MojoExecutionException, IOException {
+    private CheckOutDependency checkoutFromDependencyRepository(Dependency dependency, String dependencyScmUrl, String gituser, String gitpassword, String ticketId) throws MojoExecutionException, IOException {
         GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit, suppressPush, baseDir);
 
         // setup local temporary Directory for Git checkout
         FileHelper fileHelper = new FileHelper(log);
         File localDirectory = fileHelper.createTempGitCheckoutDirectory(dependency.getArtifactId());
 
+        log.info("cloning into "+localDirectory.getAbsolutePath());
+
         // clone Repo
         Git gitDependency = gitHandler.cloneGitRemoteRepo(dependencyScmUrl, localDirectory);
         String[] branches = gitHandler.getBranchesFromDependency(gitDependency);
-        Boolean branchFound = check(branches, ticketId);
+
+        final Optional<String> first = Arrays.asList(branches).stream()
+                .filter(x -> x.contains(ticketId))
+                .findFirst();
+        Boolean branchFound = first.isPresent();
+        String branch = first.get();
+        gitHandler.checkoutBranch(gitDependency, branch);
         gitDependency.close();
         // delete local Repository
-        fileHelper.deleteTempGitCheckoutDirectory(localDirectory);
-        return branchFound;
+        return new CheckOutDependency(localDirectory, branchFound);
     }
 
-    /**
-     * check if branches matched ticketid
-     *
-     * @param branches
-     * @param ticketId
-     * @return checkForTicketId
-     */
-    private Boolean check(String[] branches, String ticketId) throws MojoExecutionException {
-        // check for affected groudids
-        Boolean checkForTicketId = false;
-        for (String branch : branches) {
-//            log.info("branch: " + branch + " ticketID: " + ticketId);
-            if ( branch.contains(ticketId)) {
-                checkForTicketId = true;
-                log.info("this is our branched version: " + branch + " for ticketID: " + ticketId);
-            } else {
-                log.info("branch: " + branch + " - does not match our ticket " + ticketId);
-            }
-        }
-        if (!checkForTicketId) {
-//            log.info("there are no matches to our branched version - finished");
-            throw new MojoExecutionException("there are no matches to our branched version");
-        }
-        return checkForTicketId;
-    }
 
     /**
      * get Maven settings.xml

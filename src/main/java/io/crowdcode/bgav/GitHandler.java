@@ -126,13 +126,17 @@ public class GitHandler {
         log.info("Git clone " + uri + " to " + localDirectory);
         Git git = null;
         try {
-            CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
+            CredentialsProvider cp = getCredentialsProvider();
             git = Git.cloneRepository().setCredentialsProvider(cp).setDirectory( localDirectory).setURI(uri).call();
             log.info(git.toString());
         } catch (GitAPIException ex) {
             throw new MojoExecutionException("could not get Git repo: " + ex);
         }
         return git;
+    }
+
+    private CredentialsProvider getCredentialsProvider() {
+        return new UsernamePasswordCredentialsProvider(gituser, gitpassword);
     }
 
     /**
@@ -193,7 +197,7 @@ public class GitHandler {
             git.commit().setMessage(String.join("\n", commitMessages.values())).call();
         }
         if (!suppressCommit && !suppressPush) {
-            CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
+            CredentialsProvider cp = getCredentialsProvider();
             git.push().setCredentialsProvider(cp).call();
         }
     }
@@ -276,5 +280,15 @@ public class GitHandler {
             throw new MojoExecutionException("cannot read branches from repositoty: " + ex);
         }
         return branches;
+    }
+
+    public void checkoutBranch(Git git, String branch) throws MojoExecutionException{
+        try {
+            git.pull().setCredentialsProvider(getCredentialsProvider()).call();
+            git.branchCreate().setForce(true).setName(branch).setStartPoint(branch).call();
+            git.checkout().setName(branch).call();
+        } catch (GitAPIException e) {
+            throw new MojoExecutionException(e.getMessage(), e);
+        }
     }
 }
