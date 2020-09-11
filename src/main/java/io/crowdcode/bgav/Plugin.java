@@ -111,6 +111,12 @@ public class Plugin extends AbstractMojo {
     @Parameter(property = "suppressPush", defaultValue = "false")
     private boolean suppressPush;
 
+    /**
+     * pom.xml also can be a parameter
+     */
+    @Parameter(property = "pomFile", defaultValue = "pom.xml")
+    private String pomFile;
+
 
     final Log log = getLog();
 
@@ -147,9 +153,9 @@ public class Plugin extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
 
-        File pomfile = new File("pom.xml");
+        File pomfile = new File(pomFile);
         baseDir = pomfile.getAbsoluteFile().getParentFile();
-        MavenHandler mavenHandler = new MavenHandler(log, suppressCommit, suppressPush, baseDir, repositorySystem, mavenProjectBuilder, remoteRepositories, localRepository);
+        MavenHandler mavenHandler = new MavenHandler(log, suppressCommit, suppressPush, baseDir, repositorySystem, mavenProjectBuilder, remoteRepositories, localRepository, pomFile);
         Model model = mavenHandler.getModel(pomfile);
 
         log.info("Project " + model);
@@ -178,7 +184,7 @@ public class Plugin extends AbstractMojo {
         // (GIT) must not be develop, master, release
 
         // check for Git Repo -> @todo: autocloseable
-        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit, suppressPush, baseDir);
+        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit, suppressPush, pomFile, baseDir);
         Git git = gitHandler.getGitLocalRepo(model);
         if (git == null) {
             return;
@@ -222,8 +228,8 @@ public class Plugin extends AbstractMojo {
             final List<String> modules = model.getModules();
             if (modules != null && !modules.isEmpty()) {
                 for (String module:modules) {
-                    File subPom = new File(pomfile.getAbsoluteFile().getParentFile().getAbsolutePath()+"/"+module+"/pom.xml");
-                    MavenHandler subHandler = new MavenHandler(log, suppressCommit, suppressPush, baseDir, repositorySystem, mavenProjectBuilder, remoteRepositories, localRepository);
+                    File subPom = new File(pomfile.getAbsoluteFile().getParentFile().getAbsolutePath()+"/"+module+"/"+pomFile);
+                    MavenHandler subHandler = new MavenHandler(log, suppressCommit, suppressPush, baseDir, repositorySystem, mavenProjectBuilder, remoteRepositories, localRepository, pomFile);
                     Model subModel = mavenHandler.getModel(subPom);
                     gottaPush |= processPom(subPom, subHandler,subModel, gitHandler, git, branch, true, model.getId());
                 }
