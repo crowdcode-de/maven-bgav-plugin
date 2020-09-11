@@ -111,9 +111,10 @@ mvn -Dgituser=xxxx -D=gitpassword=yyyy io.crowdcode:bgav-maven-plugin:bgav
 - branchName, for setting branch name in Jenkins
 - namespace, a list of groupIds which shall be regarded when the plugin is walking through the dependencies. Normally this 
   should be the groupIds of your own modules, e.g. com.yourcompany
+- pomFile - if your target pom is not pom.xml, you can override the pom.xml filename 
+- suppressCommit - with suppress a commit after modifying the pom (only useful on development)
 - suppressCommit - with suppress a commit after modifying the pom (only useful on development)
 - suppressPush - do not push the changes. This can be useful, if the push is handled by the caller (e.g. Jenkinsfile)   
-
 
 ## Author
 

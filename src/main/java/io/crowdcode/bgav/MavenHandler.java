@@ -40,6 +40,7 @@ public class MavenHandler {
     private final MavenProjectBuilder mavenProjectBuilder;
     private final List<ArtifactRepository> remoteRepositories;
     private final ArtifactRepository localRepository;
+    private final String pomFile;
     private static final Map<String, DistributionManagement> distributionMap = new HashMap<>();
     private static final Map<String, Scm> scmMap = new HashMap<>();
 
@@ -53,7 +54,7 @@ public class MavenHandler {
         }
     }
 
-    public MavenHandler(Log log, boolean suppressCommit, boolean suppressPush, File baseDir, RepositorySystem repositorySystem, MavenProjectBuilder mavenProjectBuilder, List<ArtifactRepository> remoteRepositories, ArtifactRepository localRepository) {
+    public MavenHandler(Log log, boolean suppressCommit, boolean suppressPush, File baseDir, RepositorySystem repositorySystem, MavenProjectBuilder mavenProjectBuilder, List<ArtifactRepository> remoteRepositories, ArtifactRepository localRepository, String pomFile) {
         this.log = log;
         this.suppressCommit = suppressCommit;
         this.suppressPush = suppressPush;
@@ -62,6 +63,7 @@ public class MavenHandler {
         this.mavenProjectBuilder = mavenProjectBuilder;
         this.remoteRepositories = remoteRepositories;
         this.localRepository = localRepository;
+        this.pomFile = pomFile;
         xmlHandler = new XMLHandler(log, suppressCommit, suppressPush, this);
     }
 
@@ -407,7 +409,7 @@ public class MavenHandler {
      * @throws MojoExecutionException
      */
     private CheckOutDependency checkoutFromDependencyRepository(Dependency dependency, String dependencyScmUrl, String gituser, String gitpassword, String ticketId) throws MojoExecutionException, IOException {
-        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit, suppressPush, baseDir);
+        GitHandler gitHandler = new GitHandler(log, gituser, gitpassword, suppressCommit, suppressPush, pomFile, baseDir);
 
         // setup local temporary Directory for Git checkout
         FileHelper fileHelper = new FileHelper(log);
