@@ -42,6 +42,8 @@ public class GitHandler {
     private final boolean suppressPush;
     private final Log log;
 
+    private final String pomFile;
+
     private final Map<File, String> commitMessages = new HashMap<>();
     private final File baseDir;
 
@@ -49,19 +51,21 @@ public class GitHandler {
 //        log = null;
 //    }
 
-    public GitHandler(boolean suppressCommit, boolean suppressPush, Log log, File baseDir) {
+    public GitHandler(boolean suppressCommit, boolean suppressPush, Log log, String pomFile, File baseDir) {
         this.suppressCommit = suppressCommit;
         this.suppressPush = suppressPush;
         this.log = log;
+        this.pomFile = pomFile;
         this.baseDir = baseDir;
     }
 
-    public GitHandler(Log log, String gituser, String gitpassword, boolean suppressCommit, boolean suppressPush, File baseDir) {
+    public GitHandler(Log log, String gituser, String gitpassword, boolean suppressCommit, boolean suppressPush, String pomFile, File baseDir) {
         this.log = log;
         this.gituser = gituser;
         this.gitpassword = gitpassword;
         this.suppressCommit = suppressCommit;
         this.suppressPush = suppressPush;
+        this.pomFile = pomFile;
         this.baseDir = baseDir;
     }
 
@@ -84,7 +88,7 @@ public class GitHandler {
                     throw new MojoExecutionException("POM is not commited... please commit before building application.");
                 }
             }*/
-            if (changes.contains("pom.xml")) {
+            if (changes.contains(pomFile)) {
                 throw new MojoExecutionException("POM is not commited... please commit before building application.");
             }
         } catch (GitAPIException | NoWorkTreeException ex) {
