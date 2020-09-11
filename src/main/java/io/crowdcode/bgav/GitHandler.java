@@ -4,6 +4,7 @@ import org.apache.maven.model.Model;
 import org.apache.maven.model.io.xpp3.MavenXpp3Writer;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.logging.Log;
+import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.Status;
@@ -19,8 +20,7 @@ import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  *
@@ -39,23 +39,30 @@ public class GitHandler {
     private String gitpassword;
 
     private final boolean suppressCommit;
-
+    private final boolean suppressPush;
     private final Log log;
+
+    private final Map<File, String> commitMessages = new HashMap<>();
+    private final File baseDir;
 
 //    public GitHandler() {
 //        log = null;
 //    }
 
-    public GitHandler(boolean suppressCommit, Log log) {
+    public GitHandler(boolean suppressCommit, boolean suppressPush, Log log, File baseDir) {
         this.suppressCommit = suppressCommit;
+        this.suppressPush = suppressPush;
         this.log = log;
+        this.baseDir = baseDir;
     }
 
-    public GitHandler(Log log, String gituser, String gitpassword, boolean suppressCommit) {
+    public GitHandler(Log log, String gituser, String gitpassword, boolean suppressCommit, boolean suppressPush, File baseDir) {
         this.log = log;
         this.gituser = gituser;
         this.gitpassword = gitpassword;
         this.suppressCommit = suppressCommit;
+        this.suppressPush = suppressPush;
+        this.baseDir = baseDir;
     }
 
     /**
@@ -119,13 +126,17 @@ public class GitHandler {
         log.info("Git clone " + uri + " to " + localDirectory);
         Git git = null;
         try {
-            CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
+            CredentialsProvider cp = getCredentialsProvider();
             git = Git.cloneRepository().setCredentialsProvider(cp).setDirectory( localDirectory).setURI(uri).call();
             log.info(git.toString());
         } catch (GitAPIException ex) {
             throw new MojoExecutionException("could not get Git repo: " + ex);
         }
         return git;
+    }
+
+    private CredentialsProvider getCredentialsProvider() {
+        return new UsernamePasswordCredentialsProvider(gituser, gitpassword);
     }
 
     /**
@@ -157,20 +168,37 @@ public class GitHandler {
      * @param commitMessage
      * @throws MojoExecutionException
      */
-    void commitAndPush(Git git, String commitMessage) throws MojoExecutionException {
+    void add(Git git, String commitMessage, File pom) throws MojoExecutionException {
 
         if (!suppressCommit) {
             try {
-                CredentialsProvider cp = new UsernamePasswordCredentialsProvider(gituser, gitpassword);
-                git.add().addFilepattern("pom.xml").call();
-                git.commit().setMessage(commitMessage).call();
-                git.push().setCredentialsProvider(cp).call();
+                final AddCommand add = git.add();
+                add.addFilepattern("pom.xml");
+                add.call();
+                final File absoluteFile = pom.getAbsoluteFile();
+                if (!commitMessages.containsKey(absoluteFile)) {
+                    commitMessages.put(absoluteFile, commitMessage+" @ "+pom.getAbsolutePath().replace(baseDir.getAbsolutePath(),""));
+                }
             } catch (GitAPIException ex) {
                 log.error("GitAPIException: " + ex);
                 throw new MojoExecutionException("Git commit/push failed: " + ex);
             }
         } else {
             log.info("Suppressing commit. Nothing is commit or pushed");
+        }
+    }
+
+    void commitAndPush(Git git) throws GitAPIException {
+        if (!suppressCommit) {
+            final AddCommand add = git.add();
+            add.addFilepattern(".");
+            add.call();
+
+            git.commit().setMessage(String.join("\n", commitMessages.values())).call();
+        }
+        if (!suppressCommit && !suppressPush) {
+            CredentialsProvider cp = getCredentialsProvider();
+            git.push().setCredentialsProvider(cp).call();
         }
     }
 
@@ -186,7 +214,7 @@ public class GitHandler {
      */
     public void writeChangedPOM(Model model, MavenHandler mavenHandler, String ticketID, File pomfile) throws MojoExecutionException {
         // NCX-15
-        model.setVersion(mavenHandler.setPomVersion(model.getVersion(), ticketID));
+        model.setVersion(mavenHandler.determinePomVersion(model.getVersion(), ticketID));
         try (final FileOutputStream fileOutputStream = new FileOutputStream(pomfile)) {
             new MavenXpp3Writer().write(fileOutputStream, model);
         } catch (IOException ex) {
@@ -252,5 +280,15 @@ public class GitHandler {
             throw new MojoExecutionException("cannot read branches from repositoty: " + ex);
         }
         return branches;
+    }
+
+    public void checkoutBranch(Git git, String branch) throws MojoExecutionException{
+        try {
+            git.pull().setCredentialsProvider(getCredentialsProvider()).call();
+            git.branchCreate().setForce(true).setName(branch).setStartPoint(branch).call();
+            git.checkout().setName(branch).call();
+        } catch (GitAPIException e) {
+            throw new MojoExecutionException(e.getMessage(), e);
+        }
     }
 }

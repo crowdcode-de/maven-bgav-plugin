@@ -7,7 +7,7 @@ import java.util.regex.Pattern;
 public class PropertyHelper {
 
     public static boolean isPlaceholder(String version) {
-        return Pattern.matches("\\$\\{.*}", version);
+        return version != null && !version.trim().isEmpty() && Pattern.matches("\\$\\{.*}", version);
     }
 
     public static String resolveProperty(Model model, String version) {
