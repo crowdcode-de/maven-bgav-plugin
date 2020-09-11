@@ -26,7 +26,7 @@ If you want to use with Jenkins, just add it your Jenkinsfile, tested on Jenkins
       <plugin>
         <groupId>io.crowdcode</groupId>
         <artifactId>bgav-maven-plugin</artifactId>
-        <version>0.2.1</version>
+        <version>1.1.0</version>
         <executions>
           <execution>
             <phase>compile</phase>
