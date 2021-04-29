@@ -26,7 +26,7 @@ If you want to use with Jenkins, just add it your Jenkinsfile, tested on Jenkins
       <plugin>
         <groupId>io.crowdcode</groupId>
         <artifactId>bgav-maven-plugin</artifactId>
-        <version>1.1.0</version>
+        <version>1.2.0</version>
         <executions>
           <execution>
             <phase>compile</phase>
@@ -67,7 +67,7 @@ pipeline {
                         )]) {
                 sh "git status"
                 sh "git checkout ${env.BRANCH_NAME}"
-                mvn("-DfailOnAlteredPom=false -DbranchName=${env.BRANCH_NAME} -Dgituser=${gituser} -D=gitpassword=${gitPwd} io.crowdcode:bgav-maven-plugin:0.2.1:bgav")
+                mvn("-DfailOnAlteredPom=false -DbranchName=${env.BRANCH_NAME} -Dgituser=${gituser} -D=gitpassword=${gitPwd} io.crowdcode:bgav-maven-plugin:1.2.0:bgav")
                 }
            }
         }
