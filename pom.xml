@@ -40,6 +40,12 @@
             <organization>CROWDCODE GmbH + Co. KG.</organization>
             <organizationUrl>https://crowdcode.io</organizationUrl>
         </developer>
+        <developer>
+            <email>christoph.schemmelmann@crowdcode.io</email>
+            <name>Christoph Schemmelmann</name>
+            <organization>CROWDCODE GmbH + Co. KG.</organization>
+            <organizationUrl>https://crowdcode.io</organizationUrl>
+        </developer>
     </developers>
 
     <licenses>
