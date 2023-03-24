@@ -5,7 +5,7 @@
 
     <groupId>io.crowdcode</groupId>
     <artifactId>bgav-maven-plugin</artifactId>
-    <version>1.2.1</version>
+    <version>1.2.2</version>
     <packaging>maven-plugin</packaging>
 
     <name>Maven BGAV Plugin</name>
@@ -37,6 +37,12 @@
         <developer>
             <email>marcus.noerder-tuitje@crowdcode.io</email>
             <name>Marcus Noerder-Tuitje</name>
+            <organization>CROWDCODE GmbH + Co. KG.</organization>
+            <organizationUrl>https://crowdcode.io</organizationUrl>
+        </developer>
+        <developer>
+            <email>christoph.schemmelmann@crowdcode.io</email>
+            <name>Christoph Schemmelmann</name>
             <organization>CROWDCODE GmbH + Co. KG.</organization>
             <organizationUrl>https://crowdcode.io</organizationUrl>
         </developer>
