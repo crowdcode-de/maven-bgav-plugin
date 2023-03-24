@@ -5,7 +5,7 @@
 
     <groupId>io.crowdcode</groupId>
     <artifactId>bgav-maven-plugin</artifactId>
-    <version>1.2.2</version>
+    <version>1.2.3-SNAPSHOT</version>
     <packaging>maven-plugin</packaging>
 
     <name>Maven BGAV Plugin</name>
