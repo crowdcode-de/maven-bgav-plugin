@@ -130,7 +130,7 @@ public class Plugin extends AbstractMojo {
     /**
      * default RegEx for non BGAV branch
      */
-    private final String REGEX_NON_BGAV_BRANCH = "(develop|master|release)";
+    private final String REGEX_NON_BGAV_BRANCH = "(develop|master|main|release)";
 
     /**
      * default RegEx for ticket id
