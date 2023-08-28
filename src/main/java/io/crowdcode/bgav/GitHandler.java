@@ -72,7 +72,7 @@ public class GitHandler {
     /**
      * check for Git status abort if POM has changed
      *
-     * @param git
+     * @param git jgit-api-git
      * @throws MojoExecutionException
      */
     public void checkStatus(Git git) throws MojoExecutionException {
@@ -91,6 +91,24 @@ public class GitHandler {
             if (changes.contains(pomFile)) {
                 throw new MojoExecutionException("POM is not commited... please commit before building application.");
             }
+        } catch (GitAPIException | NoWorkTreeException ex) {
+            log.error("Git error: " + ex);
+            throw new MojoExecutionException("Git status failed: " + ex);
+        }
+    }
+
+    /**
+     * check for Git status abort if file has changed
+     *
+     * @param git  jgit-api-git
+     * @throws MojoExecutionException
+     */
+    public boolean checkFileChanged(Git git, String fileName) throws MojoExecutionException {
+        try {
+            Status status = git.status().call();
+            Set<String> changes = status.getModified();
+            log.info("Git changes: " + changes);
+            return changes.contains(fileName);
         } catch (GitAPIException | NoWorkTreeException ex) {
             log.error("Git error: " + ex);
             throw new MojoExecutionException("Git status failed: " + ex);
@@ -128,7 +146,7 @@ public class GitHandler {
      */
     public Git cloneGitRemoteRepo(String uri, File localDirectory) throws MojoExecutionException {
         log.info("Git clone " + uri + " to " + localDirectory);
-        Git git = null;
+        Git git;
         try {
             CredentialsProvider cp = getCredentialsProvider();
             git = Git.cloneRepository().setCredentialsProvider(cp).setDirectory( localDirectory).setURI(uri).call();
@@ -146,7 +164,7 @@ public class GitHandler {
     /**
      * get commit id
      *
-     * @param git
+     * @param git jgit-api-git
      * @return commit id
      * @throws MojoExecutionException
      */
@@ -168,20 +186,24 @@ public class GitHandler {
     /**
      * Git POM commit and push
      *
-     * @param git
+     * @param git jgit-api-git
      * @param commitMessage
      * @throws MojoExecutionException
      */
     void add(Git git, String commitMessage, File pom) throws MojoExecutionException {
+        add(git,commitMessage,pom,"pom.xml");
+    }
 
+    void add(Git git, String commitMessage, File file, String filePattern) throws MojoExecutionException {
+        log.info("Commit " + filePattern);
         if (!suppressCommit) {
             try {
                 final AddCommand add = git.add();
-                add.addFilepattern("pom.xml");
+                add.addFilepattern(filePattern);
                 add.call();
-                final File absoluteFile = pom.getAbsoluteFile();
+                final File absoluteFile = file.getAbsoluteFile();
                 if (!commitMessages.containsKey(absoluteFile)) {
-                    commitMessages.put(absoluteFile, commitMessage+" @ "+pom.getAbsolutePath().replace(baseDir.getAbsolutePath(),""));
+                    commitMessages.put(absoluteFile, commitMessage+" @ "+file.getAbsolutePath().replace(baseDir.getAbsolutePath(),""));
                 }
             } catch (GitAPIException ex) {
                 log.error("GitAPIException: " + ex);
@@ -265,7 +287,7 @@ public class GitHandler {
     /**
      * get Branches from remote Repository
      *
-     * @param git
+     * @param git jgit-api-git
      * @return String[] Branches
      * @throws MojoExecutionException
      */

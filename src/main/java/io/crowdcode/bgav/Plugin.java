@@ -1,5 +1,9 @@
 package io.crowdcode.bgav;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import org.apache.maven.artifact.repository.ArtifactRepository;
 import org.apache.maven.model.Model;
 import org.apache.maven.plugin.AbstractMojo;
@@ -17,6 +21,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -117,6 +122,10 @@ public class Plugin extends AbstractMojo {
     @Parameter(property = "pomFile", defaultValue = "pom.xml")
     private String pomFile;
 
+    private List<Modify> modificationslist = new ArrayList<>();
+
+    @Parameter(property = "jsonPathModificationslist", required = false)
+    private String jsonPathModificationslist = "";
 
     final Log log = getLog();
 
@@ -137,7 +146,7 @@ public class Plugin extends AbstractMojo {
      */
     private final String REGEX_TICKET = "(\\p{Upper}{1,}-\\d{1,})";
 
-    @Parameter( defaultValue = "${settings}", readonly = true )
+    @Parameter(defaultValue = "${settings}", readonly = true)
     private Settings settings;
 
     private final Map<String, Model> artifactMap = new HashMap<>();
@@ -163,10 +172,22 @@ public class Plugin extends AbstractMojo {
         log.info("failOnAlteredPom: " + failOnAlteredPom);
         log.info("branchName: " + branchName);
         log.info("getLocalRepository: " + settings.getLocalRepository());
+        log.info("jsonPathModificationslist: " + Strings.nullToEmpty(jsonPathModificationslist));
         if ((gituser == null || gituser.isEmpty()) || (gitpassword == null || gitpassword.isEmpty())) {
             log.info("no Git credentials provided");
         } else {
             log.info("Git credentials provided");
+        }
+
+        ObjectMapper mapper = new ObjectMapper();
+        if (! Strings.isNullOrEmpty(jsonPathModificationslist)) {
+            try {
+                modificationslist = mapper.readValue(jsonPathModificationslist, new TypeReference<List<Modify>>() {
+                });
+            } catch (JsonProcessingException e) {
+                throw new MojoExecutionException("jsonpath.modifications error! " + e.getMessage(), e);
+            }
+
         }
 
         // 1. check for SNAPSHOT -> if not: abort
@@ -190,7 +211,7 @@ public class Plugin extends AbstractMojo {
             return;
         }
 
-        gitHandler.checkStatus(git);
+        if (!suppressCommit) gitHandler.checkStatus(git);
 
         Repository repo = git.getRepository();
         String commitID = gitHandler.getCommitId(git);
@@ -199,6 +220,9 @@ public class Plugin extends AbstractMojo {
 
         boolean gottaPush = processPom(pomfile, mavenHandler, model, gitHandler, git, branch, false, "");
         if (gottaPush) {
+            for (Modify modify : modificationslist) {
+                modify.process(log,mavenHandler.getModel(pomfile).getVersion(),gitHandler,git);
+            }
             try {
                 gitHandler.commitAndPush(git);
             } catch (GitAPIException e) {
@@ -252,7 +276,7 @@ public class Plugin extends AbstractMojo {
                 if (versionMustBeRegarded) {
                     pomTicketId = getMatchFirst(nonNullVersion, regexTicket);
                 } else {
-                    pomTicketId = getMatchFirst(parentVersion, regexTicket);;
+                    pomTicketId = getMatchFirst(parentVersion, regexTicket);
                 }
                 ticketId = getMatchFirst(branch, regexTicket);
 
@@ -292,8 +316,8 @@ public class Plugin extends AbstractMojo {
                 try {
                     String artifacts = mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
                     if (!artifacts.isEmpty()) {
-                        gitHandler.add(git, ticketId + " - BGAV - set correct branched version for " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts),pomfile);
-                        gottaPush=true;
+                        gitHandler.add(git, ticketId + " - BGAV - set correct branched version for " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts), pomfile);
+                        gottaPush = true;
                     }
                 } catch (Exception ex) {
                     throw new MojoExecutionException("could not check for dependencies: " + ex);
@@ -338,8 +362,8 @@ public class Plugin extends AbstractMojo {
                     String artifacts = mavenHandler.removeBgavFromPom(pomfile, model, namespace);
                     if (!artifacts.isEmpty()) {
                         log.debug("removed non BGAV versions from dependencies");
-                        gitHandler.add(git, "removed BGAV from " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts),pomfile);
-                        gottaPush=true;
+                        gitHandler.add(git, "removed BGAV from " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts), pomfile);
+                        gottaPush = true;
                     } else {
                         log.debug("non BGAV dependencies have to removed");
                     }
