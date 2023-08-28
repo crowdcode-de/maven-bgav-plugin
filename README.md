@@ -20,7 +20,7 @@ If you want to use with Jenkins, just add it your Jenkinsfile, tested on Jenkins
 
 ### for local build
 
-```java
+```xml
   <build>
     <plugins>
       <plugin>
@@ -48,7 +48,7 @@ If you want to use with Jenkins, just add it your Jenkinsfile, tested on Jenkins
 
 ### for Jenkins
 
-```java
+```groovy
 pipeline {
     agent { label 'jenkins-jdk11' }
     stages {
@@ -114,7 +114,16 @@ mvn -Dgituser=xxxx -D=gitpassword=yyyy io.crowdcode:bgav-maven-plugin:bgav
 - pomFile - if your target pom is not pom.xml, you can override the pom.xml filename 
 - suppressCommit - with suppress a commit after modifying the pom (only useful on development)
 - suppressCommit - with suppress a commit after modifying the pom (only useful on development)
-- suppressPush - do not push the changes. This can be useful, if the push is handled by the caller (e.g. Jenkinsfile)   
+- suppressPush - do not push the changes. This can be useful, if the push is handled by the caller (e.g. Jenkinsfile)
+- jsonPathModificationslist - list of files that can be modified with JsoPath
+
+### jsonPathModificationslist example for npm on Jenkins
+
+the jsonPathValue "NewPomVersion" can be used for the new version on pom.xml
+
+```
+-DjsonPathModificationslist='[{"file":"package.json","formatter":"conventional","modifications":[{"expression":"$.version","value":"NewPomVersion"}]},{"file":"src/app/globals.json","formatter":"conventional","modifications":[{"expression":"$.applicationVersion","value":"NewPomVersion"}]}]'
+```
 
 ## Author
 
