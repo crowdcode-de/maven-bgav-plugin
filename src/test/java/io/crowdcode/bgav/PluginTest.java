@@ -85,6 +85,24 @@ public class PluginTest {
     }
 
     @Test
+    public void testExtractTicketIdFromLowercaseBranch() {
+        Plugin plugin = new Plugin();
+        // lowercase branch names should match and return uppercase ticket ID
+        String ticketId = plugin.getMatchFirst("feature/ncxrs-200WP02-domain-model", "(?i)(\\p{Alpha}{1,}-\\d{1,})");
+        assertNotNull("Ticket ID should be extracted from lowercase branch name", ticketId);
+        assertEquals("NCXRS-200", ticketId.toUpperCase());
+    }
+
+    @Test
+    public void testExtractTicketIdFromUppercaseBranch() {
+        Plugin plugin = new Plugin();
+        // uppercase branch names should still work
+        String ticketId = plugin.getMatchFirst("feature/NCXRS-200WP02-domain-model", "(?i)(\\p{Alpha}{1,}-\\d{1,})");
+        assertNotNull("Ticket ID should be extracted from uppercase branch name", ticketId);
+        assertEquals("NCXRS-200", ticketId.toUpperCase());
+    }
+
+    @Test
     public void testRemovePomVerion() {
         Plugin plugin = new Plugin();
         MavenHandler mavenHandler = new MavenHandler(plugin.getLog(), false, suppressPush, baseDir, null, null, null, null, pomFile);

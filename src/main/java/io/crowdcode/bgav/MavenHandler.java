@@ -374,7 +374,8 @@ public class MavenHandler {
     }
 
     private String extractTicketId(String version) {
-        return getMatchFirst(version, "(\\p{Upper}{1,}-\\d{1,})");
+        String ticketId = getMatchFirst(version, "(?i)(\\p{Alpha}{1,}-\\d{1,})");
+        return ticketId != null ? ticketId.toUpperCase() : null;
     }
 
 
