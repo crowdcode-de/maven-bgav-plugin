@@ -1,6 +1,7 @@
 package io.crowdcode.bgav;
 
 import org.apache.maven.model.Model;
+import org.apache.maven.model.Parent;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.eclipse.jgit.api.Git;
 import org.junit.Assert;
@@ -85,6 +86,24 @@ public class PluginTest {
     }
 
     @Test
+    public void testExtractTicketIdFromLowercaseBranch() {
+        Plugin plugin = new Plugin();
+        // lowercase branch names should match and return uppercase ticket ID
+        String ticketId = plugin.getMatchFirst("feature/ncxrs-200WP02-domain-model", "(?i)(\\p{Alpha}{1,}-\\d{1,})");
+        assertNotNull("Ticket ID should be extracted from lowercase branch name", ticketId);
+        assertEquals("NCXRS-200", ticketId.toUpperCase());
+    }
+
+    @Test
+    public void testExtractTicketIdFromUppercaseBranch() {
+        Plugin plugin = new Plugin();
+        // uppercase branch names should still work
+        String ticketId = plugin.getMatchFirst("feature/NCXRS-200WP02-domain-model", "(?i)(\\p{Alpha}{1,}-\\d{1,})");
+        assertNotNull("Ticket ID should be extracted from uppercase branch name", ticketId);
+        assertEquals("NCXRS-200", ticketId.toUpperCase());
+    }
+
+    @Test
     public void testRemovePomVerion() {
         Plugin plugin = new Plugin();
         MavenHandler mavenHandler = new MavenHandler(plugin.getLog(), false, suppressPush, baseDir, null, null, null, null, pomFile);
@@ -94,6 +113,46 @@ public class PluginTest {
         assertEquals(mavenHandler.determineNonBgavPomVersion("1.0.1"), "1.0.1");
         assertEquals(mavenHandler.determineNonBgavPomVersion("1.0.1-SNAPSHOT"), "1.0.1-SNAPSHOT");
 //        assertEquals(mavenHandler.setNonBgavPomVersion("1.0.1-RELEASE"), "1.0.1-RELEASE");
+    }
+
+    @Test
+    public void testIsParentInNamespace_externalParent() {
+        Plugin plugin = new Plugin();
+        Model model = new Model();
+        Parent parent = new Parent();
+        parent.setGroupId("org.springframework.boot");
+        parent.setArtifactId("spring-boot-starter-parent");
+        parent.setVersion("3.1.0");
+        model.setParent(parent);
+
+        String[] namespace = {"example.com", "io.crowdcode"};
+        assertFalse("Externer Parent (spring-boot-starter-parent) darf nicht als interner Namespace erkannt werden",
+                plugin.isParentInNamespace(model, namespace));
+    }
+
+    @Test
+    public void testIsParentInNamespace_internalParent() {
+        Plugin plugin = new Plugin();
+        Model model = new Model();
+        Parent parent = new Parent();
+        parent.setGroupId("example.com.example");
+        parent.setArtifactId("example-parent");
+        parent.setVersion("1.0.0-SNAPSHOT");
+        model.setParent(parent);
+
+        String[] namespace = {"example.com", "io.crowdcode"};
+        assertTrue("Interner Parent muss als zum Namespace gehörig erkannt werden",
+                plugin.isParentInNamespace(model, namespace));
+    }
+
+    @Test
+    public void testIsParentInNamespace_noParent() {
+        Plugin plugin = new Plugin();
+        Model model = new Model();
+
+        String[] namespace = {"example.com", "io.crowdcode"};
+        assertFalse("Modell ohne Parent darf nicht als im Namespace erkannt werden",
+                plugin.isParentInNamespace(model, namespace));
     }
 
     /*@Test

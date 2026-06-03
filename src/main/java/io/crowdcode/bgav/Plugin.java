@@ -17,6 +17,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -135,7 +136,7 @@ public class Plugin extends AbstractMojo {
     /**
      * default RegEx for ticket id
      */
-    private final String REGEX_TICKET = "(\\p{Upper}{1,}-\\d{1,})";
+    private final String REGEX_TICKET = "(?i)(\\p{Alpha}{1,}-\\d{1,})";
 
     @Parameter( defaultValue = "${settings}", readonly = true )
     private Settings settings;
@@ -255,10 +256,18 @@ public class Plugin extends AbstractMojo {
                     pomTicketId = getMatchFirst(parentVersion, regexTicket);;
                 }
                 ticketId = getMatchFirst(branch, regexTicket);
+                if (ticketId != null) {
+                    ticketId = ticketId.toUpperCase();
+                }
+                if (pomTicketId != null) {
+                    pomTicketId = pomTicketId.toUpperCase();
+                }
 
                 log.debug("POM ticketId: " + pomTicketId);
                 log.debug("ticketId: " + ticketId);
-                if (versionMustBeRegarded) {
+                if (ticketId == null) {
+                    log.warn("Could not extract ticket ID from branch '" + branch + "' using regex: " + regexTicket);
+                } else if (versionMustBeRegarded) {
                     // NCX-16 write new verion to POM
                     if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnVersion(pomfile, ticketId)) {
                         gitHandler.add(git, ticketId + " - BGAV - set correct branched version", pomfile);
@@ -280,23 +289,24 @@ public class Plugin extends AbstractMojo {
                     throw new MojoExecutionException("mismatch Git branch ticket ID and POM branch version ticket ID");
                 }
 
-                if (parentMustBeRegarded && artifactMap.containsKey(model.getParent().getId())) {
-                    // HIER
-                    if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnParentVersion(pomfile, ticketId)) {
-                        gitHandler.add(git, ticketId + " - BGAV - set correct branched version", pomfile);
-                        gottaPush = true;
+                if (ticketId != null) {
+                    if (parentMustBeRegarded && isParentInNamespace(model, namespace)) {
+                        if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnParentVersion(pomfile, ticketId)) {
+                            gitHandler.add(git, ticketId + " - BGAV - set correct branched version", pomfile);
+                            gottaPush = true;
+                        }
                     }
-                }
 
-                // NCX-36 check for affected GroupIds in dependencies
-                try {
-                    String artifacts = mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
-                    if (!artifacts.isEmpty()) {
-                        gitHandler.add(git, ticketId + " - BGAV - set correct branched version for " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts),pomfile);
-                        gottaPush=true;
+                    // NCX-36 check for affected GroupIds in dependencies
+                    try {
+                        String artifacts = mavenHandler.checkforDependencies(pomfile, model, namespace, ticketId, gituser, gitpassword, settings.getLocalRepository());
+                        if (!artifacts.isEmpty()) {
+                            gitHandler.add(git, ticketId + " - BGAV - set correct branched version for " + (artifacts.endsWith(", ") ? artifacts.substring(0, artifacts.length() - 2) : artifacts),pomfile);
+                            gottaPush=true;
+                        }
+                    } catch (Exception ex) {
+                        throw new MojoExecutionException("could not check for dependencies: " + ex);
                     }
-                } catch (Exception ex) {
-                    throw new MojoExecutionException("could not check for dependencies: " + ex);
                 }
             } else if (checkForAllowedNonBgavBranch(branch)) {
                 log.debug("running non BGAV branch");
@@ -324,12 +334,10 @@ public class Plugin extends AbstractMojo {
                     log.debug("no BGAV information inside POM Version.");
                 }
 
-                if (parentMustBeRegarded) {
-                    if (artifactMap.containsKey(parentID)) {
-                        if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromParentVersion(pomfile, nonBgavVersion)) {
-                            gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched parent version", pomfile);
-                            gottaPush = true;
-                        }
+                if (parentMustBeRegarded && isParentInNamespace(model, namespace)) {
+                    if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromParentVersion(pomfile, nonBgavVersion)) {
+                        gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched parent version", pomfile);
+                        gottaPush = true;
                     }
                 }
 
@@ -356,6 +364,12 @@ public class Plugin extends AbstractMojo {
         artifactMap.put(model.getId(), alteredModel);
 
         return gottaPush;
+    }
+
+    boolean isParentInNamespace(Model model, String[] namespaceArr) {
+        if (model.getParent() == null || namespaceArr == null) return false;
+        String parentGroupId = model.getParent().getGroupId();
+        return Arrays.stream(namespaceArr).anyMatch(ns -> parentGroupId.contains(ns));
     }
 
     /**
