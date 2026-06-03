@@ -17,6 +17,7 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Repository;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -289,8 +290,7 @@ public class Plugin extends AbstractMojo {
                 }
 
                 if (ticketId != null) {
-                    if (parentMustBeRegarded && artifactMap.containsKey(model.getParent().getId())) {
-                        // HIER
+                    if (parentMustBeRegarded && isParentInNamespace(model, namespace)) {
                         if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnParentVersion(pomfile, ticketId)) {
                             gitHandler.add(git, ticketId + " - BGAV - set correct branched version", pomfile);
                             gottaPush = true;
@@ -334,12 +334,10 @@ public class Plugin extends AbstractMojo {
                     log.debug("no BGAV information inside POM Version.");
                 }
 
-                if (parentMustBeRegarded) {
-                    if (artifactMap.containsKey(parentID)) {
-                        if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromParentVersion(pomfile, nonBgavVersion)) {
-                            gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched parent version", pomfile);
-                            gottaPush = true;
-                        }
+                if (parentMustBeRegarded && isParentInNamespace(model, namespace)) {
+                    if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromParentVersion(pomfile, nonBgavVersion)) {
+                        gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched parent version", pomfile);
+                        gottaPush = true;
                     }
                 }
 
@@ -366,6 +364,12 @@ public class Plugin extends AbstractMojo {
         artifactMap.put(model.getId(), alteredModel);
 
         return gottaPush;
+    }
+
+    boolean isParentInNamespace(Model model, String[] namespaceArr) {
+        if (model.getParent() == null || namespaceArr == null) return false;
+        String parentGroupId = model.getParent().getGroupId();
+        return Arrays.stream(namespaceArr).anyMatch(ns -> parentGroupId.contains(ns));
     }
 
     /**
