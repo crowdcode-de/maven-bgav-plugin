@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'jenkins-jdk11' }
+    agent { label 'jenkins-jdk17' }
     stages {
         stage('Build') {
            steps {  mvn("clean install -DskipTests=true") }
@@ -18,7 +18,7 @@ pipeline {
 def mvn(param) {
   withMaven(
       mavenOpts: '-Xmx1536m -Xms512m',
-      maven: 'maven-3.6.0') {
+      maven: 'maven-default') {
     sh "mvn -U -B -e ${param}"
   }
 }
