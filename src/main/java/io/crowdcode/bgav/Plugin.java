@@ -141,7 +141,7 @@ public class Plugin extends AbstractMojo {
     @Parameter( defaultValue = "${settings}", readonly = true )
     private Settings settings;
 
-    private final Map<String, Model> artifactMap = new HashMap<>();
+    final Map<String, Model> artifactMap = new HashMap<>();
     private File baseDir;
 
     /**
@@ -290,7 +290,7 @@ public class Plugin extends AbstractMojo {
                 }
 
                 if (ticketId != null) {
-                    if (parentMustBeRegarded && isParentInNamespace(model, namespace)) {
+                    if (parentMustBeRegarded && artifactMap.containsKey(model.getParent().getId())) {
                         if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).setBgavOnParentVersion(pomfile, ticketId)) {
                             gitHandler.add(git, ticketId + " - BGAV - set correct branched version", pomfile);
                             gottaPush = true;
@@ -334,7 +334,7 @@ public class Plugin extends AbstractMojo {
                     log.debug("no BGAV information inside POM Version.");
                 }
 
-                if (parentMustBeRegarded && isParentInNamespace(model, namespace)) {
+                if (parentMustBeRegarded && artifactMap.containsKey(model.getParent().getId())) {
                     if (new XMLHandler(log, suppressCommit, suppressPush, mavenHandler).removeBgavFromParentVersion(pomfile, nonBgavVersion)) {
                         gitHandler.add(git, nonBgavVersion + " - none BGAV - set correct none branched parent version", pomfile);
                         gottaPush = true;
@@ -364,12 +364,6 @@ public class Plugin extends AbstractMojo {
         artifactMap.put(model.getId(), alteredModel);
 
         return gottaPush;
-    }
-
-    boolean isParentInNamespace(Model model, String[] namespaceArr) {
-        if (model.getParent() == null || namespaceArr == null) return false;
-        String parentGroupId = model.getParent().getGroupId();
-        return Arrays.stream(namespaceArr).anyMatch(ns -> parentGroupId.contains(ns));
     }
 
     /**

@@ -116,43 +116,31 @@ public class PluginTest {
     }
 
     @Test
-    public void testIsParentInNamespace_externalParent() {
+    public void testParentInArtifactMapButNotInNamespace() {
+        // Regression: a parent that is part of the same reactor (artifactMap) but whose
+        // groupId is NOT in the configured namespace must still be recognised as internal.
         Plugin plugin = new Plugin();
-        Model model = new Model();
-        Parent parent = new Parent();
-        parent.setGroupId("org.springframework.boot");
-        parent.setArtifactId("spring-boot-starter-parent");
-        parent.setVersion("3.1.0");
-        model.setParent(parent);
 
-        String[] namespace = {"example.com", "io.crowdcode"};
-        assertFalse("Externer Parent (spring-boot-starter-parent) darf nicht als interner Namespace erkannt werden",
-                plugin.isParentInNamespace(model, namespace));
-    }
+        Model parentModel = new Model();
+        parentModel.setGroupId("com.acme");
+        parentModel.setArtifactId("acme-parent");
+        parentModel.setPackaging("pom");
+        parentModel.setVersion("1.0.0-SNAPSHOT");
+        plugin.artifactMap.put(parentModel.getId(), parentModel);
 
-    @Test
-    public void testIsParentInNamespace_internalParent() {
-        Plugin plugin = new Plugin();
-        Model model = new Model();
+        Model childModel = new Model();
+        childModel.setGroupId("io.crowdcode");
+        childModel.setArtifactId("crowdcode-module");
         Parent parent = new Parent();
-        parent.setGroupId("example.com.example");
-        parent.setArtifactId("example-parent");
+        parent.setGroupId("com.acme");
+        parent.setArtifactId("acme-parent");
         parent.setVersion("1.0.0-SNAPSHOT");
-        model.setParent(parent);
+        childModel.setParent(parent);
 
-        String[] namespace = {"example.com", "io.crowdcode"};
-        assertTrue("Interner Parent muss als zum Namespace gehörig erkannt werden",
-                plugin.isParentInNamespace(model, namespace));
-    }
-
-    @Test
-    public void testIsParentInNamespace_noParent() {
-        Plugin plugin = new Plugin();
-        Model model = new Model();
-
-        String[] namespace = {"example.com", "io.crowdcode"};
-        assertFalse("Modell ohne Parent darf nicht als im Namespace erkannt werden",
-                plugin.isParentInNamespace(model, namespace));
+        // Parent.getId() returns "groupId:artifactId:pom:version" – same format as Model.getId()
+        // so the artifactMap lookup works for any internal parent regardless of namespace.
+        assertTrue("Parent is in artifactMap and must be treated as internal",
+                plugin.artifactMap.containsKey(childModel.getParent().getId()));
     }
 
     /*@Test
